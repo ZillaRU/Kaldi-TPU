@@ -7,7 +7,7 @@
 
 #include <vector>
 
-#include "onnxruntime_cxx_api.h"  // NOLINT
+#include "cviruntime.h"  // NOLINT
 #include "sherpa-onnx/csrc/hypothesis.h"
 #include "sherpa-onnx/csrc/macros.h"
 
@@ -31,7 +31,7 @@ struct OnlineTransducerDecoderResult {
   std::vector<float> context_scores;
 
   // Cache decoder_out for endpointing
-  Ort::Value decoder_out;
+  CVI_TENSOR decoder_out;
 
   // used only in modified beam_search
   Hypotheses hyps;
@@ -79,7 +79,7 @@ class OnlineTransducerDecoder {
    * online decoding case, each utterance has the same number of frames
    * and there are no paddings.
    */
-  virtual void Decode(Ort::Value encoder_out,
+  virtual void Decode(CVI_TENSOR encoder_out,
                       std::vector<OnlineTransducerDecoderResult> *result) = 0;
 
   /** Run transducer beam search given the output from the encoder model.
@@ -95,7 +95,7 @@ class OnlineTransducerDecoder {
    * online decoding case, each utterance has the same number of frames
    * and there are no paddings.
    */
-  virtual void Decode(Ort::Value encoder_out, OnlineStream **ss,
+  virtual void Decode(CVI_TENSOR encoder_out, OnlineStream **ss,
                       std::vector<OnlineTransducerDecoderResult> *result) {
     SHERPA_ONNX_LOGE(
         "This interface is for OnlineTransducerModifiedBeamSearchDecoder.");

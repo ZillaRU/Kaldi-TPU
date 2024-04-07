@@ -6,7 +6,7 @@
 
 #include <vector>
 
-#include "onnxruntime_cxx_api.h"  // NOLINT
+#include "cviruntime.h"  // NOLINT
 
 namespace sherpa_onnx {
 
@@ -20,8 +20,7 @@ namespace sherpa_onnx {
  * @return Return the concatenated tensor
  */
 template <typename T = float>
-Ort::Value Cat(OrtAllocator *allocator,
-               const std::vector<const Ort::Value *> &values, int32_t dim);
+CVI_TENSOR Cat(const std::vector<const CVI_TENSOR *> &values, int32_t dim);
 
 }  // namespace sherpa_onnx
 

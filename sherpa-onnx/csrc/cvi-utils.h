@@ -12,26 +12,10 @@
 namespace sherpa_onnx {
 
 /**
- * Get the input names of a model.
- *
+ * Get the input and output names and shapes of a model.
  * @param model A cviruntime model handle.
- * @param input_names. On return, it contains the input names of the model.
- * @param input_names_ptr. On return, input_names_ptr[i] contains
- *                         input_names[i].c_str()
- */
-void GetInputNames(CVI_MODEL_HANDLE model, std::vector<std::string> *input_names,
-                   std::vector<const char *> *input_names_ptr);
-
-/**
- * Get the output names of a model.
- *
- * @param model A cviruntime model handle.
- * @param output_names. On return, it contains the output names of the model.
- * @param output_names_ptr. On return, output_names_ptr[i] contains
- *                         output_names[i].c_str()
- */
-void GetOutputNames(CVI_MODEL_HANDLE model, std::vector<std::string> *output_names,
-                    std::vector<const char *> *output_names_ptr);
+*/
+void GetInputOutPutInfo(CVI_MODEL_HANDLE model);
 
 /**
  * Get the output frame of Encoder

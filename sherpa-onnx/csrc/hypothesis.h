@@ -13,10 +13,10 @@
 #include <utility>
 #include <vector>
 
-#include "onnxruntime_cxx_api.h"  // NOLINT
+#include "cviruntime.h"  // NOLINT
 #include "sherpa-onnx/csrc/context-graph.h"
 #include "sherpa-onnx/csrc/math.h"
-#include "sherpa-onnx/csrc/onnx-utils.h"
+#include "sherpa-onnx/csrc/cvi-utils.h"
 
 namespace sherpa_onnx {
 

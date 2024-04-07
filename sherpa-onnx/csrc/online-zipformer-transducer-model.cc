@@ -13,19 +13,15 @@
 #include <utility>
 #include <vector>
 
-#if __ANDROID_API__ >= 9
-#include "android/asset_manager.h"
-#include "android/asset_manager_jni.h"
-#endif
-
-#include "onnxruntime_cxx_api.h"  // NOLINT
+#include "cviruntime.h"
 #include "sherpa-onnx/csrc/cat.h"
 #include "sherpa-onnx/csrc/macros.h"
 #include "sherpa-onnx/csrc/online-transducer-decoder.h"
-#include "sherpa-onnx/csrc/onnx-utils.h"
+#include "sherpa-onnx/csrc/cvi-utils.h"
 #include "sherpa-onnx/csrc/session.h"
 #include "sherpa-onnx/csrc/text-utils.h"
 #include "sherpa-onnx/csrc/unbind.h"
+#include "online-zipformer-transducer-model.h"
 
 namespace sherpa_onnx {
 
@@ -36,138 +32,47 @@ OnlineZipformerTransducerModel::OnlineZipformerTransducerModel(
       sess_opts_(GetSessionOptions(config)),
       allocator_{} {
   {
-    auto buf = ReadFile(config.transducer.encoder);
-    InitEncoder(buf.data(), buf.size());
+    InitEncoder(config.transducer.encoder);
   }
 
   {
-    auto buf = ReadFile(config.transducer.decoder);
-    InitDecoder(buf.data(), buf.size());
+    InitDecoder(config.transducer.decoder);
   }
 
   {
-    auto buf = ReadFile(config.transducer.joiner);
-    InitJoiner(buf.data(), buf.size());
+    InitJoiner(config.transducer.joiner);
   }
 }
 
-#if __ANDROID_API__ >= 9
-OnlineZipformerTransducerModel::OnlineZipformerTransducerModel(
-    AAssetManager *mgr, const OnlineModelConfig &config)
-    : env_(ORT_LOGGING_LEVEL_WARNING),
-      config_(config),
-      sess_opts_(GetSessionOptions(config)),
-      allocator_{} {
-  {
-    auto buf = ReadFile(mgr, config.transducer.encoder);
-    InitEncoder(buf.data(), buf.size());
-  }
 
-  {
-    auto buf = ReadFile(mgr, config.transducer.decoder);
-    InitDecoder(buf.data(), buf.size());
-  }
+void OnlineZipformerTransducerModel::InitEncoder(const std::string &model_path) {
+  CVI_NN_RegisterModel(model_path.c_str(), &encoder_sess_);
+  GetInputOutPutInfo(encoder_sess_);
 
-  {
-    auto buf = ReadFile(mgr, config.transducer.joiner);
-    InitJoiner(buf.data(), buf.size());
-  }
-}
-#endif
-
-void OnlineZipformerTransducerModel::InitEncoder(void *model_data,
-                                                 size_t model_data_length) {
-  encoder_sess_ = std::make_unique<Ort::Session>(env_, model_data,
-                                                 model_data_length, sess_opts_);
-
-  GetInputNames(encoder_sess_.get(), &encoder_input_names_,
-                &encoder_input_names_ptr_);
-
-  GetOutputNames(encoder_sess_.get(), &encoder_output_names_,
-                 &encoder_output_names_ptr_);
-
-  // get meta data
-  Ort::ModelMetadata meta_data = encoder_sess_->GetModelMetadata();
-  if (config_.debug) {
-    std::ostringstream os;
-    os << "---encoder---\n";
-    PrintModelMetadata(os, meta_data);
-    SHERPA_ONNX_LOGE("%s", os.str().c_str());
-  }
-
-  Ort::AllocatorWithDefaultOptions allocator;  // used in the macro below
-  SHERPA_ONNX_READ_META_DATA_VEC(encoder_dims_, "encoder_dims");
-  SHERPA_ONNX_READ_META_DATA_VEC(attention_dims_, "attention_dims");
-  SHERPA_ONNX_READ_META_DATA_VEC(num_encoder_layers_, "num_encoder_layers");
-  SHERPA_ONNX_READ_META_DATA_VEC(cnn_module_kernels_, "cnn_module_kernels");
-  SHERPA_ONNX_READ_META_DATA_VEC(left_context_len_, "left_context_len");
-
-  SHERPA_ONNX_READ_META_DATA(T_, "T");
-  SHERPA_ONNX_READ_META_DATA(decode_chunk_len_, "decode_chunk_len");
-
-  if (config_.debug) {
-    auto print = [](const std::vector<int32_t> &v, const char *name) {
-      std::ostringstream os;
-      os << name << ": ";
-      for (auto i : v) {
-        os << i << " ";
-      }
-      SHERPA_ONNX_LOGE("%s\n", os.str().c_str());
-    };
-    print(encoder_dims_, "encoder_dims");
-    print(attention_dims_, "attention_dims");
-    print(num_encoder_layers_, "num_encoder_layers");
-    print(cnn_module_kernels_, "cnn_module_kernels");
-    print(left_context_len_, "left_context_len");
-    SHERPA_ONNX_LOGE("T: %d", T_);
-    SHERPA_ONNX_LOGE("decode_chunk_len_: %d", decode_chunk_len_);
-  }
+  // set meta data
+  encoder_dims_ = {384, 384, 384, 384, 384};
+  attention_dims_ = {192, 192, 192, 192, 192};
+  num_encoder_layers_ = {2, 4, 3, 2, 4};
+  cnn_module_kernels_ = {31, 31, 31, 31, 31};
+  left_context_len_ = {64, 32, 16, 8, 32};
+  T_ = 39;
+  decode_chunk_len_ = 32;
 }
 
-void OnlineZipformerTransducerModel::InitDecoder(void *model_data,
-                                                 size_t model_data_length) {
-  decoder_sess_ = std::make_unique<Ort::Session>(env_, model_data,
-                                                 model_data_length, sess_opts_);
+void OnlineZipformerTransducerModel::InitDecoder(const std::string &model_path) {
+  CVI_NN_RegisterModel(model_path.c_str(), &decoder_sess_);
+  GetInputOutPutInfo(decoder_sess_);
 
-  GetInputNames(decoder_sess_.get(), &decoder_input_names_,
-                &decoder_input_names_ptr_);
-
-  GetOutputNames(decoder_sess_.get(), &decoder_output_names_,
-                 &decoder_output_names_ptr_);
-
-  // get meta data
-  Ort::ModelMetadata meta_data = decoder_sess_->GetModelMetadata();
-  if (config_.debug) {
-    std::ostringstream os;
-    os << "---decoder---\n";
-    PrintModelMetadata(os, meta_data);
-    SHERPA_ONNX_LOGE("%s", os.str().c_str());
-  }
-
-  Ort::AllocatorWithDefaultOptions allocator;  // used in the macro below
-  SHERPA_ONNX_READ_META_DATA(vocab_size_, "vocab_size");
-  SHERPA_ONNX_READ_META_DATA(context_size_, "context_size");
+  // set meta data
+  vocab_size_ = 6254;
+  context_size_ = 2;
 }
 
-void OnlineZipformerTransducerModel::InitJoiner(void *model_data,
-                                                size_t model_data_length) {
-  joiner_sess_ = std::make_unique<Ort::Session>(env_, model_data,
-                                                model_data_length, sess_opts_);
-
-  GetInputNames(joiner_sess_.get(), &joiner_input_names_,
-                &joiner_input_names_ptr_);
-
-  GetOutputNames(joiner_sess_.get(), &joiner_output_names_,
-                 &joiner_output_names_ptr_);
-
-  // get meta data
-  Ort::ModelMetadata meta_data = joiner_sess_->GetModelMetadata();
-  if (config_.debug) {
-    std::ostringstream os;
-    os << "---joiner---\n";
-    PrintModelMetadata(os, meta_data);
-    SHERPA_ONNX_LOGE("%s", os.str().c_str());
-  }
+void OnlineZipformerTransducerModel::InitJoiner(const std::string &model_path) {
+  CVI_NN_RegisterModel(model_path.c_str(), &joiner_sess_);
+  GetInputOutPutInfo(joiner_sess_);
+  // set meta data
+  // joiner_dim = 512
 }
 
 std::vector<Ort::Value> OnlineZipformerTransducerModel::StackStates(

@@ -9,7 +9,7 @@
 #include <utility>
 #include <vector>
 
-#include "onnxruntime_cxx_api.h"  // NOLINT
+#include "cviruntime.h"  // NOLINT
 #include "sherpa-onnx/csrc/online-model-config.h"
 #include "sherpa-onnx/csrc/online-transducer-model.h"
 
@@ -19,21 +19,21 @@ class OnlineZipformerTransducerModel : public OnlineTransducerModel {
  public:
   explicit OnlineZipformerTransducerModel(const OnlineModelConfig &config);
 
-  std::vector<Ort::Value> StackStates(
-      const std::vector<std::vector<Ort::Value>> &states) const override;
+  std::vector<CVI_TENSOR> StackStates(
+      const std::vector<std::vector<CVI_TENSOR>> &states) const override;
 
-  std::vector<std::vector<Ort::Value>> UnStackStates(
-      const std::vector<Ort::Value> &states) const override;
+  std::vector<std::vector<CVI_TENSOR>> UnStackStates(
+      const std::vector<CVI_TENSOR> &states) const override;
 
-  std::vector<Ort::Value> GetEncoderInitStates() override;
+  std::vector<CVI_TENSOR> GetEncoderInitStates() override;
 
-  std::pair<Ort::Value, std::vector<Ort::Value>> RunEncoder(
-      Ort::Value features, std::vector<Ort::Value> states,
-      Ort::Value processed_frames) override;
+  std::pair<CVI_TENSOR, std::vector<CVI_TENSOR>> RunEncoder(
+      CVI_TENSOR features, std::vector<CVI_TENSOR> states,
+      CVI_TENSOR processed_frames) override;
 
-  Ort::Value RunDecoder(Ort::Value decoder_input) override;
+  CVI_TENSOR RunDecoder(CVI_TENSOR decoder_input) override;
 
-  Ort::Value RunJoiner(Ort::Value encoder_out, Ort::Value decoder_out) override;
+  CVI_TENSOR RunJoiner(CVI_TENSOR encoder_out, CVI_TENSOR decoder_out) override;
 
   int32_t ContextSize() const override { return context_size_; }
 
@@ -41,22 +41,15 @@ class OnlineZipformerTransducerModel : public OnlineTransducerModel {
 
   int32_t ChunkShift() const override { return decode_chunk_len_; }
 
-  int32_t VocabSize() const override { return vocab_size_; }
-  OrtAllocator *Allocator() override { return allocator_; }
+ private:
+  void InitEncoder(const std::string &model_path);
+  void InitDecoder(const std::string &model_path);
+  void InitJoiner(const std::string &model_path);
 
  private:
-  void InitEncoder(void *model_data, size_t model_data_length);
-  void InitDecoder(void *model_data, size_t model_data_length);
-  void InitJoiner(void *model_data, size_t model_data_length);
-
- private:
-  Ort::Env env_;
-  Ort::SessionOptions sess_opts_;
-  Ort::AllocatorWithDefaultOptions allocator_;
-
-  std::unique_ptr<Ort::Session> encoder_sess_;
-  std::unique_ptr<Ort::Session> decoder_sess_;
-  std::unique_ptr<Ort::Session> joiner_sess_;
+  std::unique_ptr<CVI_MODEL_HANDLE> encoder_sess_;
+  std::unique_ptr<CVI_MODEL_HANDLE> decoder_sess_;
+  std::unique_ptr<CVI_MODEL_HANDLE> joiner_sess_;
 
   std::vector<std::string> encoder_input_names_;
   std::vector<const char *> encoder_input_names_ptr_;

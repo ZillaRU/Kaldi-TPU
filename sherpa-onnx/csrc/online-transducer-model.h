@@ -8,12 +8,8 @@
 #include <utility>
 #include <vector>
 
-#if __ANDROID_API__ >= 9
-#include "android/asset_manager.h"
-#include "android/asset_manager_jni.h"
-#endif
 
-#include "onnxruntime_cxx_api.h"  // NOLINT
+#include "cviruntime.h"  // NOLINT
 #include "sherpa-onnx/csrc/hypothesis.h"
 #include "sherpa-onnx/csrc/online-model-config.h"
 #include "sherpa-onnx/csrc/online-transducer-decoder.h"
@@ -30,11 +26,6 @@ class OnlineTransducerModel {
   static std::unique_ptr<OnlineTransducerModel> Create(
       const OnlineModelConfig &config);
 
-#if __ANDROID_API__ >= 9
-  static std::unique_ptr<OnlineTransducerModel> Create(
-      AAssetManager *mgr, const OnlineModelConfig &config);
-#endif
-
   /** Stack a list of individual states into a batch.
    *
    * It is the inverse operation of `UnStackStates`.
@@ -42,8 +33,8 @@ class OnlineTransducerModel {
    * @param states states[i] contains the state for the i-th utterance.
    * @return Return a single value representing the batched state.
    */
-  virtual std::vector<Ort::Value> StackStates(
-      const std::vector<std::vector<Ort::Value>> &states) const = 0;
+  virtual std::vector<CVI_TENSOR> StackStates(
+      const std::vector<std::vector<CVI_TENSOR>> &states) const = 0;
 
   /** Unstack a batch state into a list of individual states.
    *
@@ -52,14 +43,14 @@ class OnlineTransducerModel {
    * @param states A batched state.
    * @return ans[i] contains the state for the i-th utterance.
    */
-  virtual std::vector<std::vector<Ort::Value>> UnStackStates(
-      const std::vector<Ort::Value> &states) const = 0;
+  virtual std::vector<std::vector<CVI_TENSOR>> UnStackStates(
+      const std::vector<CVI_TENSOR> &states) const = 0;
 
   /** Get the initial encoder states.
    *
    * @return Return the initial encoder state.
    */
-  virtual std::vector<Ort::Value> GetEncoderInitStates() = 0;
+  virtual std::vector<CVI_TENSOR> GetEncoderInitStates() = 0;
 
   /** Set feature dim.
    *
@@ -82,9 +73,9 @@ class OnlineTransducerModel {
    *           - encoder_out, a tensor of shape (N, T', encoder_out_dim)
    *           - next_states  Encoder state for the next chunk.
    */
-  virtual std::pair<Ort::Value, std::vector<Ort::Value>> RunEncoder(
-      Ort::Value features, std::vector<Ort::Value> states,
-      Ort::Value processed_frames) = 0;  // NOLINT
+  virtual std::pair<CVI_TENSOR, std::vector<CVI_TENSOR>> RunEncoder(
+      CVI_TENSOR features, std::vector<CVI_TENSOR> states,
+      CVI_TENSOR processed_frames) = 0;  // NOLINT
 
   /** Run the decoder network.
    *
@@ -96,7 +87,7 @@ class OnlineTransducerModel {
    * @param decoder_input It is usually of shape (N, context_size)
    * @return Return a tensor of shape (N, decoder_dim).
    */
-  virtual Ort::Value RunDecoder(Ort::Value decoder_input) = 0;
+  virtual CVI_TENSOR RunDecoder(CVI_TENSOR decoder_input) = 0;
 
   /** Run the joint network.
    *
@@ -108,8 +99,8 @@ class OnlineTransducerModel {
    *         last layer of the joint network is `nn.Linear`,
    *         not `nn.LogSoftmax`.
    */
-  virtual Ort::Value RunJoiner(Ort::Value encoder_out,
-                               Ort::Value decoder_out) = 0;
+  virtual CVI_TENSOR RunJoiner(CVI_TENSOR encoder_out,
+                               CVI_TENSOR decoder_out) = 0;
 
   /** If we are using a stateless decoder and if it contains a
    *  Conv1D, this function returns the kernel size of the convolution layer.
@@ -138,12 +129,10 @@ class OnlineTransducerModel {
 
   virtual int32_t SubsamplingFactor() const { return 4; }
 
-  virtual OrtAllocator *Allocator() = 0;
-
-  Ort::Value BuildDecoderInput(
+  CVI_TENSOR BuildDecoderInput(
       const std::vector<OnlineTransducerDecoderResult> &results);
 
-  Ort::Value BuildDecoderInput(const std::vector<Hypothesis> &hyps);
+  CVI_TENSOR BuildDecoderInput(const std::vector<Hypothesis> &hyps);
 };
 
 }  // namespace sherpa_onnx

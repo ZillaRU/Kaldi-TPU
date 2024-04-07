@@ -33,8 +33,6 @@ static void UpdateCachedDecoderOut(
     std::vector<OnlineTransducerDecoderResult> *results) {
   std::vector<int64_t> shape =
       decoder_out->GetTensorTypeAndShapeInfo().GetShape();
-  auto memory_info =
-      Ort::MemoryInfo::CreateCpu(OrtDeviceAllocator, OrtMemTypeDefault);
   std::array<int64_t, 2> v_shape{1, shape[1]};
 
   const float *src = decoder_out->GetTensorData<float>();

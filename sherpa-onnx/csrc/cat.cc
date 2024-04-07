@@ -9,7 +9,7 @@
 #include <numeric>
 #include <utility>
 
-#include "sherpa-onnx/csrc/onnx-utils.h"
+#include "sherpa-onnx/csrc/cvi-utils.h"
 
 namespace sherpa_onnx {
 
@@ -34,8 +34,7 @@ static void PrintShape(const std::vector<int64_t> &a) {
 }
 
 template <typename T /*=float*/>
-Ort::Value Cat(OrtAllocator *allocator,
-               const std::vector<const Ort::Value *> &values, int32_t dim) {
+CVI_TENSOR Cat(const std::vector<const CVI_TENSOR *> &values, int32_t dim) {
   if (values.size() == 1u) {
     return Clone(allocator, values[0]);
   }
@@ -77,7 +76,7 @@ Ort::Value Cat(OrtAllocator *allocator,
       std::accumulate(v0_shape.begin() + dim + 1, v0_shape.end(), 1,
                       std::multiplies<int64_t>()));
 
-  Ort::Value ans = Ort::Value::CreateTensor<T>(allocator, ans_shape.data(),
+  CVI_TENSOR ans = CVI_TENSOR::CreateTensor<T>(allocator, ans_shape.data(),
                                                ans_shape.size());
   T *dst = ans.GetTensorMutableData<T>();
 
@@ -95,12 +94,10 @@ Ort::Value Cat(OrtAllocator *allocator,
   return std::move(ans);
 }
 
-template Ort::Value Cat<float>(OrtAllocator *allocator,
-                               const std::vector<const Ort::Value *> &values,
+template CVI_TENSOR Cat<float>(const std::vector<const CVI_TENSOR *> &values,
                                int32_t dim);
 
-template Ort::Value Cat<int64_t>(OrtAllocator *allocator,
-                                 const std::vector<const Ort::Value *> &values,
+template CVI_TENSOR Cat<int64_t>(const std::vector<const CVI_TENSOR *> &values,
                                  int32_t dim);
 
 }  // namespace sherpa_onnx
