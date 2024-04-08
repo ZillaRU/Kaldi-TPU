@@ -55,21 +55,12 @@ if(APPLE)
   )
 endif()
 
-if(ANDROID_NDK)
-  target_link_libraries(sherpa-onnx-core android log)
-endif()
 
 target_link_libraries(sherpa-onnx-core
   kaldi-native-fbank-core
   kaldi-decoder-core
 )
 
-if(SHERPA_ONNX_ENABLE_GPU)
-  target_link_libraries(sherpa-onnx-core
-    onnxruntime_providers_cuda
-    onnxruntime_providers_shared
-  )
-endif()
 
 if(BUILD_SHARED_LIBS)
   target_link_libraries(sherpa-onnx-core onnxruntime)
@@ -79,9 +70,6 @@ endif()
 
 target_link_libraries(sherpa-onnx-core -lm)
 
-if(NOT BUILD_SHARED_LIBS AND APPLE)
-  target_link_libraries(sherpa-onnx-core "-framework Foundation")
-endif()
 
 if(SHERPA_ONNX_ENABLE_TTS)
   target_link_libraries(sherpa-onnx-core piper_phonemize)
@@ -149,6 +137,11 @@ if(SHERPA_ONNX_ENABLE_BINARY)
   )
 endif()
 
+set(CVI_LIBS ${CVI_LIBS} cviruntime cvikernel)
+if(NOT CMAKE_CROSSCOMPILING)
+  set(CVI_LIBS ${CVI_LIBS} cvicmodel)
+endif()
+
 if(SHERPA_ONNX_HAS_ALSA AND SHERPA_ONNX_ENABLE_BINARY)
   add_executable(sherpa-onnx-alsa sherpa-onnx-alsa.cc alsa.cc)
 
@@ -158,6 +151,7 @@ if(SHERPA_ONNX_HAS_ALSA AND SHERPA_ONNX_ENABLE_BINARY)
 
   foreach(exe IN LISTS exes)
     target_link_libraries(${exe} sherpa-onnx-core)
+    target_link_libraries(${exe} ${CVI_LIBS})
   endforeach()
 
   foreach(exe IN LISTS exes)

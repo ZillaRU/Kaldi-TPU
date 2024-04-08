@@ -80,7 +80,9 @@ endif()
 set(CMAKE_CXX_EXTENSIONS OFF)
 message(STATUS "C++ Standard version: ${CMAKE_CXX_STANDARD}")
 
+
 include(CheckIncludeFileCXX)
+
 
 if(UNIX AND NOT APPLE AND NOT SHERPA_ONNX_ENABLE_WASM AND NOT CMAKE_SYSTEM_NAME STREQUAL Android)
   check_include_file_cxx(alsa/asoundlib.h SHERPA_ONNX_HAS_ALSA)
@@ -121,6 +123,12 @@ include(onnxruntime)
 set(ONNXRUNTIME_DIR ${onnxruntime_SOURCE_DIR})
 message(STATUS "ONNXRUNTIME_DIR: ${ONNXRUNTIME_DIR}")
 
+if(NOT DEFINED TPU_SDK_PATH)
+  message(FATAL_ERROR "Please set TPU_SDK_PATH to point to the TPU_SDK installation")
+endif()
+include_directories(${TPU_SDK_PATH}/include)
+link_directories(${TPU_SDK_PATH}/lib)
+message(STATUS "Using TPU_SDK: ${TPU_SDK_PATH}")
 
 if(SHERPA_ONNX_ENABLE_TESTS)
   enable_testing()
