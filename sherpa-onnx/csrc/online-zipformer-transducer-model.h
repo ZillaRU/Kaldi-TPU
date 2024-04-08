@@ -9,7 +9,7 @@
 #include <utility>
 #include <vector>
 
-#include "onnxruntime_cxx_api.h"  // NOLINT
+#include "onnx-to-cvi.h"
 #include "sherpa-onnx/csrc/online-model-config.h"
 #include "sherpa-onnx/csrc/online-transducer-model.h"
 
@@ -45,9 +45,9 @@ class OnlineZipformerTransducerModel : public OnlineTransducerModel {
   OrtAllocator *Allocator() override { return allocator_; }
 
  private:
-  void InitEncoder(void *model_data, size_t model_data_length);
-  void InitDecoder(void *model_data, size_t model_data_length);
-  void InitJoiner(void *model_data, size_t model_data_length);
+  void InitEncoder(const std::string &model_path);
+  void InitDecoder(const std::string &model_path);
+  void InitJoiner(const std::string &model_path);
 
  private:
   Ort::Env env_;
