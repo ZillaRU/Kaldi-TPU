@@ -1,3 +1,9 @@
+Install alsa
+```sh
+sudo apt-get update -y
+sudo apt-get install -y alsa-utils libasound2-dev
+```
+
 # Introduction
 
 This repository supports running the following functions **locally**
