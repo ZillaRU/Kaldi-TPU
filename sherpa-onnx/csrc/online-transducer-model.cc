@@ -62,34 +62,7 @@ static ModelType GetModelType(char *model_data, size_t model_data_length,
 
 std::unique_ptr<OnlineTransducerModel> OnlineTransducerModel::Create(
     const OnlineModelConfig &config) {
-  if (!config.model_type.empty()) {
-    const auto &model_type = config.model_type;
-    if (model_type == "zipformer") {
-      return std::make_unique<OnlineZipformerTransducerModel>(config);
-    } else {
-      SHERPA_ONNX_LOGE(
-          "Invalid model_type: %s. Trying to load the model to get its type",
-          model_type.c_str());
-    }
-  }
-  ModelType model_type = ModelType::kUnknown;
-
-  {
-    auto buffer = ReadFile(config.transducer.encoder);
-
-    model_type = GetModelType(buffer.data(), buffer.size(), config.debug);
-  }
-
-  switch (model_type) {
-    case ModelType::kZipformer:
-      return std::make_unique<OnlineZipformerTransducerModel>(config);
-    case ModelType::kUnknown:
-      SHERPA_ONNX_LOGE("Unknown model type in online transducer!");
-      return nullptr;
-  }
-
-  // unreachable code
-  return nullptr;
+  return std::make_unique<OnlineZipformerTransducerModel>(config);
 }
 
 Ort::Value OnlineTransducerModel::BuildDecoderInput(

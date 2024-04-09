@@ -20,6 +20,9 @@
 #include "sherpa-onnx/csrc/session.h"
 #include "sherpa-onnx/csrc/text-utils.h"
 #include "sherpa-onnx/csrc/unbind.h"
+#include "cviruntime.h"
+#include "cvi-utils.h"
+#include "onnx-to-cvi.h"
 
 namespace sherpa_onnx {
 
@@ -345,28 +348,29 @@ OnlineZipformerTransducerModel::RunEncoder(Ort::Value features,
   // get input / output tensors
   CVI_TENSOR *input_tensors, *output_tensors;
   int32_t input_num, output_num;
-  CVI_NN_GetInputOutputTensors(encoder_sess_, &input_tensors, input_num, &output_tensors, output_num);
+  CVI_NN_GetInputOutputTensors(encoder_sess_, &input_tensors, &input_num, &output_tensors, &output_num);
   printf("[encoder] input num: %d, output num: %d\n", input_num, output_num);
 
   LoadOrtValuesToCviTensors(encoder_inputs, input_tensors, input_num);
 
-  CVI_NN_Forward(encoder_sess_, &input_tensors, &input_num, &output_tensors, &output_num);
+  CVI_NN_Forward(encoder_sess_, input_tensors, input_num, output_tensors, output_num);
 
-  std::vector<Ort::Value> next_states = GetOrtValuesFromCviTensors(output_tensors+1, output_num, allocator_);
+  std::vector<Ort::Value> next_states = GetOrtValuesFromCviTensors(output_tensors+1, output_num-1);
 
-  return {std::move(ConvertCviTensorToOrtValue(output_tensors[0], allocator_), std::move(next_states)};
+  return {std::move(GetOrtValueFromCviTensor(output_tensors[0])), std::move(next_states)};
 }
 
 Ort::Value OnlineZipformerTransducerModel::RunDecoder(Ort::Value decoder_input) {
   // get input / output tensors
   CVI_TENSOR *input_tensors, *output_tensors;
   int32_t input_num, output_num;
-  CVI_NN_GetInputOutputTensors(encoder_sess_, &input_tensors, input_num, &output_tensors, output_num);
+  CVI_NN_GetInputOutputTensors(decoder_sess_, &input_tensors, &input_num, &output_tensors, &output_num);
   printf("[Decoder] input num: %d, output num: %d\n", input_num, output_num);
-
-  LoadOrtValuesToCviTensors(encoder_inputs, input_tensors, input_num);
-  CVI_NN_Forward(decoder_sess_, &input_tensors, &input_num, &output_tensors, &output_num);
-  return std::move(ConvertCviTensorToOrtValue(output_tensors[0], allocator_);
+  std::vector<Ort::Value> temp = {};
+  temp.push_back(std::move(decoder_input));
+  LoadOrtValuesToCviTensors(temp, input_tensors, input_num);
+  CVI_NN_Forward(decoder_sess_, input_tensors, input_num, output_tensors, output_num);
+  return std::move(GetOrtValueFromCviTensor(output_tensors[0]));
 }
 
 Ort::Value OnlineZipformerTransducerModel::RunJoiner(Ort::Value encoder_out,
@@ -374,12 +378,14 @@ Ort::Value OnlineZipformerTransducerModel::RunJoiner(Ort::Value encoder_out,
   // get input / output tensors
   CVI_TENSOR *input_tensors, *output_tensors;
   int32_t input_num, output_num;
-  CVI_NN_GetInputOutputTensors(joiner_sess_, &input_tensors, input_num, &output_tensors, output_num);
+  CVI_NN_GetInputOutputTensors(joiner_sess_, &input_tensors, &input_num, &output_tensors, &output_num);
   printf("[Decoder] input num: %d, output num: %d\n", input_num, output_num);
-  std::vector<Ort::Value> temp = {std::move(encoder_out), std::move(decoder_out)};
+  std::vector<Ort::Value> temp = {};
+  temp.push_back(std::move(encoder_out));
+  temp.push_back(std::move(decoder_out));
   LoadOrtValuesToCviTensors(temp, input_tensors, input_num);
-  CVI_NN_Forward(joiner_sess_, &input_tensors, &input_num, &output_tensors, &output_num);
-  return std::move(ConvertCviTensorToOrtValue(output_tensors[0], allocator_)
+  CVI_NN_Forward(joiner_sess_, input_tensors, input_num, output_tensors, output_num);
+  return std::move(GetOrtValueFromCviTensor(output_tensors[0]));
 }
 
 }  // namespace sherpa_onnx

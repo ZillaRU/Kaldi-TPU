@@ -6,9 +6,6 @@
 #define SHERPA_ONNX_CSRC_ONNX_UTILS_H_
 
 #ifdef _MSC_VER
-// For ToWide() below
-#include <codecvt>
-#include <locale>
 #endif
 
 #include <cassert>

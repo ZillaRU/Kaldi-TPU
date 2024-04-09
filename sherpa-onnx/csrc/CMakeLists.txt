@@ -29,6 +29,8 @@ set(sources
   online-transducer-model.cc
   online-zipformer-transducer-model.cc
   onnx-utils.cc
+  cvi-utils.cc
+  onnx-to-cvi.cc
   packed-sequence.cc
   pad-sequence.cc
   parse-options.cc
@@ -70,6 +72,12 @@ endif()
 
 target_link_libraries(sherpa-onnx-core -lm)
 
+set(CVI_LIBS ${CVI_LIBS} cviruntime cvikernel)
+if(NOT CMAKE_CROSSCOMPILING)
+  set(CVI_LIBS ${CVI_LIBS} cvicmodel)
+endif()
+
+target_link_libraries(sherpa-onnx-core ${CVI_LIBS})
 
 if(SHERPA_ONNX_ENABLE_TTS)
   target_link_libraries(sherpa-onnx-core piper_phonemize)
@@ -137,11 +145,6 @@ if(SHERPA_ONNX_ENABLE_BINARY)
   )
 endif()
 
-set(CVI_LIBS ${CVI_LIBS} cviruntime cvikernel)
-if(NOT CMAKE_CROSSCOMPILING)
-  set(CVI_LIBS ${CVI_LIBS} cvicmodel)
-endif()
-
 if(SHERPA_ONNX_HAS_ALSA AND SHERPA_ONNX_ENABLE_BINARY)
   add_executable(sherpa-onnx-alsa sherpa-onnx-alsa.cc alsa.cc)
 
@@ -151,7 +154,6 @@ if(SHERPA_ONNX_HAS_ALSA AND SHERPA_ONNX_ENABLE_BINARY)
 
   foreach(exe IN LISTS exes)
     target_link_libraries(${exe} sherpa-onnx-core)
-    target_link_libraries(${exe} ${CVI_LIBS})
   endforeach()
 
   foreach(exe IN LISTS exes)

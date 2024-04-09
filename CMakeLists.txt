@@ -94,7 +94,7 @@ if(UNIX AND NOT APPLE AND NOT SHERPA_ONNX_ENABLE_WASM AND NOT CMAKE_SYSTEM_NAME 
 Could not find alsa/asoundlib.h !
 We won't build sherpa-onnx-alsa
 To fix that, please do:
-  (1) sudo apt-get install alsa-utils libasound2-dev
+  (1) sudo apt-get update -y && sudo apt-get install -y alsa-utils libasound2-dev
   (2) rm -rf build
   (3) re-try
   ")

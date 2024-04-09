@@ -9,7 +9,7 @@
 #include <utility>
 #include <vector>
 
-#include "onnx-to-cvi.h"
+#include "cviruntime.h"
 #include "sherpa-onnx/csrc/online-model-config.h"
 #include "sherpa-onnx/csrc/online-transducer-model.h"
 
@@ -54,9 +54,9 @@ class OnlineZipformerTransducerModel : public OnlineTransducerModel {
   Ort::SessionOptions sess_opts_;
   Ort::AllocatorWithDefaultOptions allocator_;
 
-  std::unique_ptr<Ort::Session> encoder_sess_;
-  std::unique_ptr<Ort::Session> decoder_sess_;
-  std::unique_ptr<Ort::Session> joiner_sess_;
+  CVI_MODEL_HANDLE encoder_sess_ = nullptr;
+  CVI_MODEL_HANDLE decoder_sess_ = nullptr;
+  CVI_MODEL_HANDLE joiner_sess_ = nullptr;
 
   std::vector<std::string> encoder_input_names_;
   std::vector<const char *> encoder_input_names_ptr_;
