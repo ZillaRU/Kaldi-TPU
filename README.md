@@ -6,9 +6,8 @@
 - 获取docker镜像，创建容器并进入：`docker run --privileged --name mytpudev -v $PWD:/workspace -it sophgo/tpuc_dev:latest`。执行完这一命令后，会进入docker，后续步骤都在`mytpudev`容器中执行。
 
 - 若是在x86机器上模拟运行，需要在docker内执行。按以下步骤操作：
- 1. 获取docker镜像，
- 2. 获取`cvitek_tpu_sdk_x86`，然后执行`source cvitek_tpu_sdk_x86/envs_tpu_sdk.sh`。
- 3. 设置TPU SDK路径，`export TPU_SDK_PATH=/workspace/cvitek_tpu_sdk_x86`。
+ 1. 获取`cvitek_tpu_sdk_x86`，然后执行`source cvitek_tpu_sdk_x86/envs_tpu_sdk.sh`。
+ 2. 设置TPU SDK路径，`export TPU_SDK_PATH=/workspace/cvitek_tpu_sdk_x86`。
 
 - 若是在板子上实测，需要在x86机器上完成交叉编译，按以下步骤操作：
  1. 获取cvitek_tpu_sdk_rv64，然后执行`source cvitek_tpu_sdk_rv64/envs_tpu_sdk.sh`。
@@ -22,18 +21,25 @@ sudo apt-get install -y alsa-utils libasound2-dev
 ```
 
 ## 3. 编译在docker的sample
-docker内执行以下命令。
+docker内执行`cd Kaldi-TPU && mkdir build && cd build`。
+若要在X86机器模拟运行，执行：
 ```sh
-cd Kaldi-TPU
-mkdir build
-cd build
-cmake -DCMAKE_BUILD_TYPE=Release -DTPU_SDK_PATH=$TPU_SDK_PATH ..
+cmake -DCMAKE_BUILD_TYPE=Release -DTPU_SDK_PATH=$TPU_SDK_PATH .. # X86机器模拟运行
+make clean && make -j6
+```
+若要编出在板子上运行的文件，需交叉编译，执行：
+```sh
+toolchain-linux-gnueabihf.cmake
+cmake -DCMAKE_TOOLCHAIN_FILE=$TPU_SDK_PATH/cmake/toolchain-riscv64-linux-x86_64.cmake \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DTPU_SDK_PATH=$TPU_SDK_PATH \
+  ..
 make clean && make -j6
 ```
 编译完成后，会在`build/bin`目录得到2个可执行文件。
 
 ## 4. 运行
-- [下载cvimodel模型和token文件]
+- [下载cvimodel模型和token文件](https://drive.google.com/drive/folders/10X38V8oKOC2nrDw-9Aw9sKk7gNYCkXoV?usp=sharing)
 - 流式音频文件文字识别：命令行执行下列命令，
   ```sh
   ./bin/sherpa-onnx \

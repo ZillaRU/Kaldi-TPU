@@ -6,8 +6,8 @@ if(NOT CMAKE_SYSTEM_NAME STREQUAL Linux)
   message(FATAL_ERROR "This file is for Linux only. Given: ${CMAKE_SYSTEM_NAME}")
 endif()
 
-if(NOT CMAKE_SYSTEM_PROCESSOR STREQUAL riscv64)
-  message(FATAL_ERROR "This file is for riscv64 only. Given: ${CMAKE_SYSTEM_PROCESSOR}")
+if(NOT (CMAKE_SYSTEM_PROCESSOR  MATCHES "^(riscv|riscv64)$"))
+  message(FATAL_ERROR "This file is for riscv only. Given: ${CMAKE_SYSTEM_PROCESSOR}")
 endif()
 
 if(BUILD_SHARED_LIBS)

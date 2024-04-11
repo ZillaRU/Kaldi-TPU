@@ -39,24 +39,18 @@ Usage:
 Please refer to
 https://k2-fsa.github.io/sherpa/onnx/pretrained_models/index.html
 for a list of pre-trained models to download.
+设备名用来指定系统中可用的麦克风中具体使用哪一个。
 
-The device name specifies which microphone to use in case there are several
-on your system. You can use
+可以使用命令 arecord -l 查看你系统中所有可用的麦克风。例如，如果输出如下：
 
-  arecord -l
-
-to find all available microphones on your computer. For instance, if it outputs
-
-**** List of CAPTURE Hardware Devices ****
-card 3: UACDemoV10 [UACDemoV1.0], device 0: USB Audio [USB Audio]
+**** 列出所有捕获硬件设备 ****
+card 3: UACDemoV10 [UACDemoV1.0], device 0: USB 音频 [USB 音频]
   Subdevices: 1/1
   Subdevice #0: subdevice #0
 
-and if you want to select card 3 and the device 0 on that card, please use:
-
+那么，如果你想选择 card 3 和 device 0 这个设备，请使用：
   plughw:3,0
-
-as the device_name.
+作为 device_name。
 )usage";
   sherpa_onnx::ParseOptions po(kUsageMessage);
   sherpa_onnx::OnlineRecognizerConfig config;

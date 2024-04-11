@@ -30,11 +30,6 @@ class OnlineTransducerModel {
   static std::unique_ptr<OnlineTransducerModel> Create(
       const OnlineModelConfig &config);
 
-#if __ANDROID_API__ >= 9
-  static std::unique_ptr<OnlineTransducerModel> Create(
-      AAssetManager *mgr, const OnlineModelConfig &config);
-#endif
-
   /** Stack a list of individual states into a batch.
    *
    * It is the inverse operation of `UnStackStates`.

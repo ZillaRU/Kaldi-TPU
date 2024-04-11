@@ -4,6 +4,7 @@
 
 #include "sherpa-onnx/csrc/online-recognizer-impl.h"
 #include "sherpa-onnx/csrc/online-recognizer-transducer-impl.h"
+#include "online-recognizer-impl.h"
 
 namespace sherpa_onnx {
 
@@ -16,4 +17,5 @@ std::unique_ptr<OnlineRecognizerImpl> OnlineRecognizerImpl::Create(
   SHERPA_ONNX_LOGE("Please specify a model");
   exit(-1);
 }
+
 }  // namespace sherpa_onnx

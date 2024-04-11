@@ -123,10 +123,6 @@ class OnlineRecognizer {
  public:
   explicit OnlineRecognizer(const OnlineRecognizerConfig &config);
 
-#if __ANDROID_API__ >= 9
-  OnlineRecognizer(AAssetManager *mgr, const OnlineRecognizerConfig &config);
-#endif
-
   ~OnlineRecognizer();
 
   /// Create a stream for decoding.

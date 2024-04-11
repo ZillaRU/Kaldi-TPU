@@ -116,12 +116,6 @@ std::string OnlineRecognizerConfig::ToString() const {
 OnlineRecognizer::OnlineRecognizer(const OnlineRecognizerConfig &config)
     : impl_(OnlineRecognizerImpl::Create(config)) {}
 
-#if __ANDROID_API__ >= 9
-OnlineRecognizer::OnlineRecognizer(AAssetManager *mgr,
-                                   const OnlineRecognizerConfig &config)
-    : impl_(OnlineRecognizerImpl::Create(mgr, config)) {}
-#endif
-
 OnlineRecognizer::~OnlineRecognizer() = default;
 
 std::unique_ptr<OnlineStream> OnlineRecognizer::CreateStream() const {
