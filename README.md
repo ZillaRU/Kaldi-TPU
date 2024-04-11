@@ -10,8 +10,8 @@
  2. 设置TPU SDK路径，`export TPU_SDK_PATH=/workspace/cvitek_tpu_sdk_x86`。
 
 - 若是在板子上实测，需要在x86机器上完成交叉编译，按以下步骤操作：
- 1. 获取cvitek_tpu_sdk_rv64，然后执行`source cvitek_tpu_sdk_rv64/envs_tpu_sdk.sh`。
- 2. 获取`riscv64-linux-musl-x86_64`，然后执行`export PATH=/workspace/riscv64-linux-musl-x86_64/bin:$PATH`添加到环境变量。
+ 1. 获取cvitek_tpu_sdk_rv64_glibc，然后执行`source cvitek_tpu_sdk_rv64_glibc/envs_tpu_sdk.sh`。
+ 2. 获取`riscv64-linux-x86_64`，然后执行`export PATH=/workspace/riscv64-linux-x86_64/bin:$PATH`添加到环境变量。
  3. 设置TPU SDK路径，`export TPU_SDK_PATH=/workspace/cvitek_tpu_sdk_rv64`。
 
 - 安装ALSA音频框架
@@ -27,9 +27,15 @@ docker内执行`cd Kaldi-TPU && mkdir build && cd build`。
 cmake -DCMAKE_BUILD_TYPE=Release -DTPU_SDK_PATH=$TPU_SDK_PATH .. # X86机器模拟运行
 make clean && make -j6
 ```
-若要编出在板子上运行的文件，需交叉编译，执行：
+若要编出在板子上运行的文件，需交叉编译，执行
 ```sh
-toolchain-linux-gnueabihf.cmake
+cmake -DCMAKE_TOOLCHAIN_FILE=$TPU_SDK_PATH/cmake/toolchain-linux-gnueabihf.cmake \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DTPU_SDK_PATH=$TPU_SDK_PATH \
+  ..
+```
+
+```sh
 cmake -DCMAKE_TOOLCHAIN_FILE=$TPU_SDK_PATH/cmake/toolchain-riscv64-linux-x86_64.cmake \
   -DCMAKE_BUILD_TYPE=Release \
   -DTPU_SDK_PATH=$TPU_SDK_PATH \
