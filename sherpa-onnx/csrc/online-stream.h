@@ -8,7 +8,6 @@
 #include <memory>
 #include <vector>
 
-#include "onnxruntime_cxx_api.h"  // NOLINT
 #include "sherpa-onnx/csrc/context-graph.h"
 #include "sherpa-onnx/csrc/features.h"
 #include "sherpa-onnx/csrc/online-transducer-decoder.h"
@@ -74,8 +73,8 @@ class OnlineStream {
   void SetResult(const OnlineTransducerDecoderResult &r);
   OnlineTransducerDecoderResult &GetResult();
 
-  void SetStates(std::vector<Ort::Value> states);
-  std::vector<Ort::Value> &GetStates();
+  void SetStates(CachedTensors states);
+  CachedTensors &GetStates();
 
   /**
    * Get the context graph corresponding to this stream.

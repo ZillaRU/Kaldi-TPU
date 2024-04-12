@@ -13,10 +13,9 @@
 #include <utility>
 #include <vector>
 
-#include "onnxruntime_cxx_api.h"  // NOLINT
 #include "sherpa-onnx/csrc/context-graph.h"
 #include "sherpa-onnx/csrc/math.h"
-#include "sherpa-onnx/csrc/onnx-utils.h"
+#include "sherpa-onnx/csrc/data-utils.h"
 
 namespace sherpa_onnx {
 
@@ -50,11 +49,6 @@ struct Hypothesis {
 
   // LM log prob if any.
   double lm_log_prob = 0;
-
-  // the nn lm score for next token given the current ys
-  CopyableOrtValue nn_lm_scores;
-  // the nn lm states
-  std::vector<CopyableOrtValue> nn_lm_states;
 
   const ContextState *context_state;
 

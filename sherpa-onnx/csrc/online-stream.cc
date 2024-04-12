@@ -53,7 +53,7 @@ class OnlineStream::Impl {
 
   int32_t FeatureDim() const { return feat_extractor_.FeatureDim(); }
 
-  void SetStates(std::vector<Ort::Value> states) {
+  void SetStates(CachedTensors states) {
     states_ = std::move(states);
   }
 
@@ -120,11 +120,11 @@ OnlineTransducerDecoderResult &OnlineStream::GetResult() {
   return impl_->GetResult();
 }
 
-void OnlineStream::SetStates(std::vector<Ort::Value> states) {
+void OnlineStream::SetStates(CachedTensors states) {
   impl_->SetStates(std::move(states));
 }
 
-std::vector<Ort::Value> &OnlineStream::GetStates() {
+CachedTensors &OnlineStream::GetStates() {
   return impl_->GetStates();
 }
 

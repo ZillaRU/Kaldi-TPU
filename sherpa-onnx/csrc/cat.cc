@@ -13,94 +13,148 @@
 
 namespace sherpa_onnx {
 
-static bool Compare(const std::vector<int64_t> &a,
-                    const std::vector<int64_t> &b, int32_t skip_dim) {
-  if (a.size() != b.size()) return false;
+template <typename T>
+std::vector<std::vector<std::vector<T>>> Concatenate3DTensorsDim1(
+    const std::vector<std::vector<std::vector<T>>>& tensors) {
+    assert(!tensors.empty());
 
-  for (int32_t i = 0; i != static_cast<int32_t>(a.size()); ++i) {
-    if (i == skip_dim) continue;
+    size_t dim0 = tensors.front().size();
+    size_t dim2 = tensors.front().front().size();
 
-    if (a[i] != b[i]) return false;
-  }
-
-  return true;
-}
-
-static void PrintShape(const std::vector<int64_t> &a) {
-  for (auto i : a) {
-    fprintf(stderr, "%d ", static_cast<int32_t>(i));
-  }
-  fprintf(stderr, "\n");
-}
-
-template <typename T /*=float*/>
-Ort::Value Cat(OrtAllocator *allocator,
-               const std::vector<const Ort::Value *> &values, int32_t dim) {
-  if (values.size() == 1u) {
-    return Clone(allocator, values[0]);
-  }
-
-  std::vector<int64_t> v0_shape =
-      values[0]->GetTensorTypeAndShapeInfo().GetShape();
-
-  int64_t total_dim = v0_shape[dim];
-
-  for (int32_t i = 1; i != static_cast<int32_t>(values.size()); ++i) {
-    auto s = values[i]->GetTensorTypeAndShapeInfo().GetShape();
-    total_dim += s[dim];
-
-    bool ret = Compare(v0_shape, s, dim);
-    if (!ret) {
-      fprintf(stderr, "Incorrect shape in Cat !\n");
-
-      fprintf(stderr, "Shape for tensor 0: ");
-      PrintShape(v0_shape);
-
-      fprintf(stderr, "Shape for tensor %d: ", i);
-      PrintShape(s);
-
-      exit(-1);
+    for (const auto& tensor : tensors) {
+        assert(tensor.size() == dim0);
+        for (const auto& slice : tensor) {
+            assert(slice.size() == dim2);
+        }
     }
-  }
 
-  std::vector<int64_t> ans_shape;
-  ans_shape.reserve(v0_shape.size());
-  ans_shape.insert(ans_shape.end(), v0_shape.data(), v0_shape.data() + dim);
-  ans_shape.push_back(total_dim);
-  ans_shape.insert(ans_shape.end(), v0_shape.data() + dim + 1,
-                   v0_shape.data() + v0_shape.size());
-
-  auto leading_size = static_cast<int32_t>(std::accumulate(
-      v0_shape.begin(), v0_shape.begin() + dim, 1, std::multiplies<int64_t>()));
-
-  auto trailing_size = static_cast<int32_t>(
-      std::accumulate(v0_shape.begin() + dim + 1, v0_shape.end(), 1,
-                      std::multiplies<int64_t>()));
-
-  Ort::Value ans = Ort::Value::CreateTensor<T>(allocator, ans_shape.data(),
-                                               ans_shape.size());
-  T *dst = ans.GetTensorMutableData<T>();
-
-  for (int32_t i = 0; i != leading_size; ++i) {
-    for (int32_t n = 0; n != static_cast<int32_t>(values.size()); ++n) {
-      auto this_dim = values[n]->GetTensorTypeAndShapeInfo().GetShape()[dim];
-      const T *src = values[n]->GetTensorData<T>();
-      src += i * this_dim * trailing_size;
-
-      std::copy(src, src + this_dim * trailing_size, dst);
-      dst += this_dim * trailing_size;
+    // 计算拼接维度的总大小
+    size_t total_dim1 = 0;
+    for (const auto& tensor : tensors) {
+        total_dim1 += tensor.front().size();
     }
-  }
 
-  return std::move(ans);
+    std::vector<std::vector<std::vector<T>>> result(dim0, std::vector<std::vector<T>>(total_dim1));
+
+    for (size_t i = 0; i < dim0; ++i) {
+        size_t current_dim1 = 0;
+        for (const auto& tensor : tensors) {
+            auto& result_slice = result[i];
+            for (const auto& row : tensor[i]) {
+                result_slice[current_dim1].reserve(dim2);
+                std::copy(row.begin(), row.end(), std::back_inserter(result_slice[current_dim1]));
+                ++current_dim1;
+            }
+        }
+    }
+
+    return result;
 }
 
-template Ort::Value Cat<float>(OrtAllocator *allocator,
-                               const std::vector<const Ort::Value *> &values,
-                               int32_t dim);
+template <typename T>
+std::vector<std::vector<std::vector<std::vector<T>>>> Concatenate4DTensorsDim1(
+    const std::vector<std::vector<std::vector<std::vector<T>>>>& tensors) {
+    assert(!tensors.empty());
 
-template Ort::Value Cat<int64_t>(OrtAllocator *allocator,
-                                 const std::vector<const Ort::Value *> &values,
-                                 int32_t dim);
+    size_t dim0 = tensors.front().size();
+    size_t dim2 = tensors.front().front().front().size();
+    size_t dim3 = tensors.front().front().front().front().size();
+
+    for (const auto& tensor : tensors) {
+        assert(tensor.size() == dim0);
+        for (const auto& mat : tensor) {
+            assert(mat.front().size() == dim2);
+            for (const auto& vec : mat) {
+                assert(vec.size() == dim3);
+            }
+        }
+    }
+
+    // 计算拼接维度的总大小
+    size_t total_dim1 = 0;
+    for (const auto& tensor : tensors) {
+        total_dim1 += tensor.front().size();
+    }
+
+    std::vector<std::vector<std::vector<std::vector<T>>>> result(dim0, std::vector<std::vector<std::vector<T>>>(total_dim1));
+
+    for (size_t i = 0; i < dim0; ++i) {
+        size_t current_dim1 = 0;
+        for (const auto& tensor : tensors) {
+            auto& result_mat = result[i];
+            for (const auto& mat : tensor[i]) {
+                result_mat[current_dim1].reserve(dim2);
+                for (const auto& vec : mat) {
+                    result_mat[current_dim1].push_back(vec); // Copy the 3D vector
+                }
+                ++current_dim1;
+            }
+        }
+    }
+
+    return result;
+}
+
+template <typename T>
+std::vector<std::vector<std::vector<std::vector<T>>>> Concatenate4DTensorsDim2(
+    const std::vector<std::vector<std::vector<std::vector<T>>>>& tensors) {
+    assert(!tensors.empty());
+
+    size_t dim0 = tensors.front().size();
+    size_t dim1 = tensors.front().front().size();
+    size_t dim3 = tensors.front().front().front().front().size();
+
+    for (const auto& tensor : tensors) {
+        assert(tensor.size() == dim0);
+        for (const auto& mat : tensor) {
+            assert(mat.size() == dim1);
+            for (const auto& vec : mat) {
+                assert(vec.size() == dim3);
+            }
+        }
+    }
+
+    // 计算拼接维度的总大小
+    size_t total_dim2 = 0;
+    for (const auto& tensor : tensors) {
+        total_dim2 += tensor.front().front().size();
+    }
+
+    std::vector<std::vector<std::vector<std::vector<T>>>> result(dim0, std::vector<std::vector<std::vector<T>>>(dim1, std::vector<std::vector<T>>(total_dim2)));
+
+    for (size_t i = 0; i < dim0; ++i) {
+        for (size_t j = 0; j < dim1; ++j) {
+            size_t current_dim2 = 0;
+            for (const auto& tensor : tensors) {
+                auto& result_slice = result[i][j];
+                for (const auto& row : tensor[i][j]) {
+                    result_slice[current_dim2].reserve(dim3);
+                    std::copy(row.begin(), row.end(), std::back_inserter(result_slice[current_dim2]));
+                    ++current_dim2;
+                }
+            }
+        }
+    }
+
+    return result;
+}
+
+template std::vector<std::vector<std::vector<float>>> Concatenate3DTensorsDim1(
+    const std::vector<std::vector<std::vector<float>>>& tensors);
+
+template std::vector<std::vector<std::vector<int64_t>>> Concatenate3DTensorsDim1(
+    const std::vector<std::vector<std::vector<int64_t>>>& tensors);
+
+template std::vector<std::vector<std::vector<std::vector<float>>>> Concatenate4DTensorsDim1(
+    const std::vector<std::vector<std::vector<std::vector<float>>>>& tensors);
+
+template std::vector<std::vector<std::vector<std::vector<int64_t>>>> Concatenate4DTensorsDim1(
+    const std::vector<std::vector<std::vector<std::vector<int64_t>>>>& tensors);
+
+template std::vector<std::vector<std::vector<std::vector<float>>>> Concatenate4DTensorsDim2(
+    const std::vector<std::vector<std::vector<std::vector<float>>>>& tensors);
+
+template std::vector<std::vector<std::vector<std::vector<int64_t>>>> Concatenate4DTensorsDim2(
+    const std::vector<std::vector<std::vector<std::vector<int64_t>>>>& tensors);
 
 }  // namespace sherpa_onnx

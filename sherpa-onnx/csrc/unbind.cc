@@ -13,7 +13,7 @@
 #include <vector>
 
 #include "onnxruntime_cxx_api.h"  // NOLINT
-#include "sherpa-onnx/csrc/onnx-utils.h"
+#include "sherpa-onnx/csrc/data-utils.h"
 
 namespace sherpa_onnx {
 

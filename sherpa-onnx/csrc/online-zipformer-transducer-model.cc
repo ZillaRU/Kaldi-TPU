@@ -15,7 +15,7 @@
 
 #include "cvi-utils.h"
 #include "cviruntime.h"
-#include "onnx-to-cvi.h"
+#include "vector-to-cvi.h"
 #include "sherpa-onnx/csrc/cat.h"
 #include "sherpa-onnx/csrc/macros.h"
 #include "sherpa-onnx/csrc/online-transducer-decoder.h"
@@ -247,19 +247,19 @@ OnlineZipformerTransducerModel::UnStackStates(
   return ans;
 }
 
-std::vector<Ort::Value> OnlineZipformerTransducerModel::GetEncoderInitStates() {
+CachedTensors OnlineZipformerTransducerModel::GetEncoderInitStates() {
   // Please see
   // https://github.com/k2-fsa/icefall/blob/master/egs/librispeech/ASR/pruned_transducer_stateless7_streaming/zipformer.py#L673
   // for details
 
   int32_t n = static_cast<int32_t>(encoder_dims_.size());
-  std::vector<Ort::Value> cached_len_vec;
-  std::vector<Ort::Value> cached_avg_vec;
-  std::vector<Ort::Value> cached_key_vec;
-  std::vector<Ort::Value> cached_val_vec;
-  std::vector<Ort::Value> cached_val2_vec;
-  std::vector<Ort::Value> cached_conv1_vec;
-  std::vector<Ort::Value> cached_conv2_vec;
+  std::vector<std::vector<int64_t> > cached_len_vec;
+  std::vector<std::vector<std::vector<std::vector<float> > > cached_avg_vec;
+  std::vector<std::vector<std::vector<std::vector<std::vector<float> > > > > cached_key_vec;
+  std::vector<std::vector<std::vector<std::vector<std::vector<float> > > > > cached_val_vec;
+  std::vector<std::vector<std::vector<std::vector<std::vector<float> > > > > cached_val2_vec;
+  std::vector<std::vector<std::vector<std::vector<std::vector<float> > > > > cached_conv1_vec;
+  std::vector<std::vector<std::vector<std::vector<std::vector<float> > > > > cached_conv2_vec;
 
   cached_len_vec.reserve(n);
   cached_avg_vec.reserve(n);
@@ -271,73 +271,104 @@ std::vector<Ort::Value> OnlineZipformerTransducerModel::GetEncoderInitStates() {
 
   for (int32_t i = 0; i != n; ++i) {
     {
-      std::array<int64_t, 2> s{num_encoder_layers_[i], 1};
-      auto v =
-          Ort::Value::CreateTensor<int64_t>(allocator_, s.data(), s.size());
-      Fill<int64_t>(&v, 0);
+      std::vector<int64_t> v(num_encoder_layers_[i], 0); 
       cached_len_vec.push_back(std::move(v));
     }
 
     {
-      std::array<int64_t, 3> s{num_encoder_layers_[i], 1, encoder_dims_[i]};
-      auto v = Ort::Value::CreateTensor<float>(allocator_, s.data(), s.size());
-      Fill(&v, 0);
+      std::vector<std::vector<std::vector<float> > > v(
+          num_encoder_layers_[i], 
+          std::vector<std::vector<float>>(
+              1, 
+              std::vector<float>(encoder_dims_[i], 0.0f)
+          )
+      );
       cached_avg_vec.push_back(std::move(v));
     }
 
     {
-      std::array<int64_t, 4> s{num_encoder_layers_[i], left_context_len_[i], 1,
-                               attention_dims_[i]};
-      auto v = Ort::Value::CreateTensor<float>(allocator_, s.data(), s.size());
-      Fill(&v, 0);
+      std::vector<std::vector<std::vector<std::vector<float> > > > v(
+          num_encoder_layers_[i], 
+          std::vector<std::vector<std::vector<float> > >(
+              left_context_len_[i], 
+              std::vector<std::vector<float>>(
+                  1, 
+                  std::vector<float>(attention_dims_[i], 0.0f)
+              )
+          )
+      );
       cached_key_vec.push_back(std::move(v));
     }
 
     {
-      std::array<int64_t, 4> s{num_encoder_layers_[i], left_context_len_[i], 1,
-                               attention_dims_[i] / 2};
-      auto v = Ort::Value::CreateTensor<float>(allocator_, s.data(), s.size());
-      Fill(&v, 0);
+      std::vector<std::vector<std::vector<std::vector<float> > > > v(
+          num_encoder_layers_[i],
+          std::vector<std::vector<std::vector<float>>>(
+              left_context_len_[i],
+              std::vector<std::vector<float>>(
+                  1,
+                  std::vector<float>(attention_dims_[i] / 2, 0.0f)
+              )
+          )
+      );
       cached_val_vec.push_back(std::move(v));
     }
 
     {
-      std::array<int64_t, 4> s{num_encoder_layers_[i], left_context_len_[i], 1,
-                               attention_dims_[i] / 2};
-      auto v = Ort::Value::CreateTensor<float>(allocator_, s.data(), s.size());
-      Fill(&v, 0);
+      std::vector<std::vector<std::vector<std::vector<float> > > > v(
+          num_encoder_layers_[i],
+          std::vector<std::vector<std::vector<float>>>(
+              left_context_len_[i],
+              std::vector<std::vector<float>>(
+                  1,
+                  std::vector<float>(attention_dims_[i] / 2, 0.0f)
+              )
+          )
+      );
       cached_val2_vec.push_back(std::move(v));
     }
 
     {
-      std::array<int64_t, 4> s{num_encoder_layers_[i], 1, encoder_dims_[i],
-                               cnn_module_kernels_[i] - 1};
-      auto v = Ort::Value::CreateTensor<float>(allocator_, s.data(), s.size());
-      Fill(&v, 0);
+      std::vector<std::vector<std::vector<std::vector<float> > > > v(
+          num_encoder_layers_[i],
+          std::vector<std::vector<std::vector<float>>>(
+              1,
+              std::vector<std::vector<float>>(
+                  encoder_dims_[i],
+                  std::vector<float>(cnn_module_kernels_[i] - 1, 0.0f)
+              )
+          )
+      );
       cached_conv1_vec.push_back(std::move(v));
     }
 
     {
-      std::array<int64_t, 4> s{num_encoder_layers_[i], 1, encoder_dims_[i],
-                               cnn_module_kernels_[i] - 1};
-      auto v = Ort::Value::CreateTensor<float>(allocator_, s.data(), s.size());
-      Fill(&v, 0);
+      std::vector<std::vector<std::vector<std::vector<float> > > > v(
+          num_encoder_layers_[i],
+          std::vector<std::vector<std::vector<float>>>(
+              1,
+              std::vector<std::vector<float>>(
+                  encoder_dims_[i],
+                  std::vector<float>(cnn_module_kernels_[i] - 1, 0.0f)
+              )
+          )
+      );
       cached_conv2_vec.push_back(std::move(v));
     }
+
   }
 
-  std::vector<Ort::Value> ans;
-  ans.reserve(n * 7);
+  CachedTensors tensors;
 
-  for (auto &v : cached_len_vec) ans.push_back(std::move(v));
-  for (auto &v : cached_avg_vec) ans.push_back(std::move(v));
-  for (auto &v : cached_key_vec) ans.push_back(std::move(v));
-  for (auto &v : cached_val_vec) ans.push_back(std::move(v));
-  for (auto &v : cached_val2_vec) ans.push_back(std::move(v));
-  for (auto &v : cached_conv1_vec) ans.push_back(std::move(v));
-  for (auto &v : cached_conv2_vec) ans.push_back(std::move(v));
+  tensors.cached_len_vec = std::move(cached_len_vec);
+  tensors.cached_avg_vec = std::move(cached_avg_vec);
+  tensors.cached_key_vec = std::move(cached_key_vec);
+  tensors.cached_val_vec = std::move(cached_val_vec);
+  tensors.cached_val2_vec = std::move(cached_val2_vec);
+  tensors.cached_conv1_vec = std::move(cached_conv1_vec);
+  tensors.cached_conv2_vec = std::move(cached_conv2_vec);
 
-  return ans;
+  return tensors;
 }
 
 std::pair<Ort::Value, std::vector<Ort::Value>>

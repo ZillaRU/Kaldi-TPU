@@ -15,6 +15,17 @@
 
 namespace sherpa_onnx {
 
+struct CachedTensors {
+  std::vector<std::vector<int64_t>> cached_len_vec;
+  std::vector<std::vector<std::vector<std::vector<float>>>> cached_avg_vec;
+  std::vector<std::vector<std::vector<std::vector<std::vector<float>>>>> cached_key_vec;
+  std::vector<std::vector<std::vector<std::vector<std::vector<float>>>>> cached_val_vec;
+  std::vector<std::vector<std::vector<std::vector<std::vector<float>>>>> cached_val2_vec;
+  std::vector<std::vector<std::vector<std::vector<std::vector<float>>>>> cached_conv1_vec;
+  std::vector<std::vector<std::vector<std::vector<std::vector<float>>>>> cached_conv2_vec;
+};
+
+
 class OnlineZipformerTransducerModel : public OnlineTransducerModel {
  public:
   explicit OnlineZipformerTransducerModel(const OnlineModelConfig &config);
