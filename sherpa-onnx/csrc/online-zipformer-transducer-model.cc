@@ -14,6 +14,7 @@
 #include <vector>
 
 #include "cvi-utils.h"
+#include "state_struct.h"
 #include "cviruntime.h"
 #include "vector-to-cvi.h"
 #include "sherpa-onnx/csrc/cat.h"

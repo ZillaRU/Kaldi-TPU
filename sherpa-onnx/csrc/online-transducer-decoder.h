@@ -7,7 +7,6 @@
 
 #include <vector>
 
-#include "onnxruntime_cxx_api.h"  // NOLINT
 #include "sherpa-onnx/csrc/hypothesis.h"
 #include "sherpa-onnx/csrc/macros.h"
 
@@ -31,13 +30,13 @@ struct OnlineTransducerDecoderResult {
   std::vector<float> context_scores;
 
   // Cache decoder_out for endpointing
-  Ort::Value decoder_out;
+  std::vector<float> decoder_out; // <1,512,1,1>
 
   // used only in modified beam_search
   Hypotheses hyps;
 
   OnlineTransducerDecoderResult()
-      : tokens{}, num_trailing_blanks(0), decoder_out{nullptr}, hyps{} {}
+      : tokens{}, num_trailing_blanks(0), decoder_out{}, hyps{} {}
 
   OnlineTransducerDecoderResult(const OnlineTransducerDecoderResult &other);
 

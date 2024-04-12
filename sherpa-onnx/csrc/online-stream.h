@@ -11,6 +11,7 @@
 #include "sherpa-onnx/csrc/context-graph.h"
 #include "sherpa-onnx/csrc/features.h"
 #include "sherpa-onnx/csrc/online-transducer-decoder.h"
+#include "sherpa-onnx/csrc/state_struct.h"
 
 namespace sherpa_onnx {
 

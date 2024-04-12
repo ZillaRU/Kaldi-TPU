@@ -7,9 +7,6 @@
 #include <utility>
 #include <vector>
 
-#include "onnxruntime_cxx_api.h"  // NOLINT
-#include "sherpa-onnx/csrc/onnx-utils.h"
-
 namespace sherpa_onnx {
 
 OnlineTransducerDecoderResult::OnlineTransducerDecoderResult(

@@ -57,7 +57,7 @@ class OnlineStream::Impl {
     states_ = std::move(states);
   }
 
-  std::vector<Ort::Value> &GetStates() { return states_; }
+  CachedTensors &GetStates() { return states_; }
 
   const ContextGraphPtr &GetContextGraph() const { return context_graph_; }
 
@@ -69,7 +69,7 @@ class OnlineStream::Impl {
   int32_t start_frame_index_ = 0;     // never reset
   int32_t segment_ = 0;
   OnlineTransducerDecoderResult result_;
-  std::vector<Ort::Value> states_;  // states for transducer or ctc models
+  CachedTensors states_;  // states for transducer or ctc models
 };
 
 OnlineStream::OnlineStream(const FeatureExtractorConfig &config /*= {}*/,
