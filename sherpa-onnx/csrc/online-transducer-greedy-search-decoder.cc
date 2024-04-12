@@ -9,7 +9,6 @@
 #include <vector>
 
 #include "sherpa-onnx/csrc/macros.h"
-#include "sherpa-onnx/csrc/onnx-utils.h"
 
 namespace sherpa_onnx {
 
@@ -28,8 +27,7 @@ static void UseCachedDecoderOut(
   }
 }
 
-static void UpdateCachedDecoderOut(
-    OrtAllocator *allocator, const Ort::Value *decoder_out,
+static void UpdateCachedDecoderOut(DecoderOut *decoder_out,
     std::vector<OnlineTransducerDecoderResult> *results) {
   std::vector<int64_t> shape =
       decoder_out->GetTensorTypeAndShapeInfo().GetShape();

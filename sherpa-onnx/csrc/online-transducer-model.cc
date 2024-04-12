@@ -24,42 +24,6 @@ enum class ModelType {
 
 namespace sherpa_onnx {
 
-static ModelType GetModelType(char *model_data, size_t model_data_length,
-                              bool debug) {
-  Ort::Env env(ORT_LOGGING_LEVEL_WARNING);
-  Ort::SessionOptions sess_opts;
-  sess_opts.SetIntraOpNumThreads(1);
-  sess_opts.SetInterOpNumThreads(1);
-
-  auto sess = std::make_unique<Ort::Session>(env, model_data, model_data_length,
-                                             sess_opts);
-
-  Ort::ModelMetadata meta_data = sess->GetModelMetadata();
-  if (debug) {
-    std::ostringstream os;
-    PrintModelMetadata(os, meta_data);
-    SHERPA_ONNX_LOGE("%s", os.str().c_str());
-  }
-
-  Ort::AllocatorWithDefaultOptions allocator;
-  auto model_type =
-      meta_data.LookupCustomMetadataMapAllocated("model_type", allocator);
-  if (!model_type) {
-    SHERPA_ONNX_LOGE(
-        "No model_type in the metadata!\n"
-        "Please make sure you are using the latest export-onnx.py from icefall "
-        "to export your transducer models");
-    return ModelType::kUnknown;
-  }
-
-  if (model_type.get() == std::string("zipformer")) {
-    return ModelType::kZipformer;
-  } else {
-    SHERPA_ONNX_LOGE("Unsupported model_type: %s", model_type.get());
-    return ModelType::kUnknown;
-  }
-}
-
 std::unique_ptr<OnlineTransducerModel> OnlineTransducerModel::Create(
     const OnlineModelConfig &config) {
   return std::make_unique<OnlineZipformerTransducerModel>(config);

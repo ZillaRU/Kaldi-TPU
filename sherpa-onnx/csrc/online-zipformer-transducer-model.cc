@@ -372,7 +372,7 @@ CachedTensors OnlineZipformerTransducerModel::GetEncoderInitStates() {
   return tensors;
 }
 
-std::pair<Ort::Value, std::vector<Ort::Value>>
+std::pair<std::vector<std::vector<std::vector<std::vector<std::vector<float>>>>>, EncoderOutNextStates> >
 OnlineZipformerTransducerModel::RunEncoder(Ort::Value features,
                                            std::vector<Ort::Value> states,
                                            Ort::Value /* processed_frames */) {
@@ -393,14 +393,14 @@ OnlineZipformerTransducerModel::RunEncoder(Ort::Value features,
 
   LoadOrtValuesToCviTensors(encoder_inputs, input_tensors, input_num);
 
-  CVI_NN_Forward(encoder_sess_, input_tensors, input_num, output_tensors,
-                 output_num);
+  CVI_NN_Forward(encoder_sess_, input_tensors, input_num, output_tensors, output_num);
 
   std::vector<Ort::Value> next_states =
-      GetOrtValuesFromCviTensors(output_tensors + 1, output_num - 1);
+      GetVectorsFromCviTensors(output_tensors + 1, output_num - 1);
 
-  return {std::move(GetOrtValueFromCviTensor(output_tensors[0])),
-          std::move(next_states)};
+  auto res = EncoderOut();
+  res.encoder_out_Add_f32_ = GetOrtValueFromCviTensor(output_tensors[0]);
+  return res;
 }
 
 Ort::Value OnlineZipformerTransducerModel::RunDecoder(
