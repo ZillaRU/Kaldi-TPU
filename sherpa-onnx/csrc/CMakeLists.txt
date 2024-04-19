@@ -29,16 +29,13 @@ set(sources
   online-transducer-model.cc
   online-zipformer-transducer-model.cc
   onnx-utils.cc
-  cvi-utils.cc
-  onnx-to-cvi.cc
-  packed-sequence.cc
+  unt-utils.cc
+  onnx-to-unt.cc
   pad-sequence.cc
   parse-options.cc
   provider.cc
   resample.cc
   session.cc
-  slice.cc
-  stack.cc
   symbol-table.cc
   text-utils.cc
   transpose.cc
@@ -72,12 +69,7 @@ endif()
 
 target_link_libraries(sherpa-onnx-core -lm)
 
-set(CVI_LIBS ${CVI_LIBS} cviruntime cvikernel)
-if(NOT CMAKE_CROSSCOMPILING)
-  set(CVI_LIBS ${CVI_LIBS} cvicmodel)
-endif()
-
-target_link_libraries(sherpa-onnx-core ${CVI_LIBS})
+target_link_libraries(sherpa-onnx-core untpu)
 
 if(SHERPA_ONNX_ENABLE_TTS)
   target_link_libraries(sherpa-onnx-core piper_phonemize)
@@ -189,10 +181,7 @@ if(SHERPA_ONNX_ENABLE_TESTS)
     cat-test.cc
     circular-buffer-test.cc
     context-graph-test.cc
-    packed-sequence-test.cc
     pad-sequence-test.cc
-    slice-test.cc
-    stack-test.cc
     transpose-test.cc
     unbind-test.cc
     utfcpp-test.cc

@@ -18,7 +18,7 @@ void OnlineModelConfig::Register(ParseOptions *po) {
   po->Register("num-threads", &num_threads,
                "Number of threads to run the neural network");
 
-  po->Register("debug", &debug,
+  po->Register("debug", &is_debug,
                "true to print model information while loading it.");
 
   po->Register("provider", &provider,
@@ -52,7 +52,7 @@ std::string OnlineModelConfig::ToString() const {
   os << "transducer=" << transducer.ToString() << ", ";
   os << "tokens=\"" << tokens << "\", ";
   os << "num_threads=" << num_threads << ", ";
-  os << "debug=" << (debug ? "True" : "False") << ", ";
+  os << "debug=" << (is_debug ? "True" : "False") << ", ";
   os << "provider=\"" << provider << "\", ";
   os << "model_type=\"" << model_type << "\")";
 

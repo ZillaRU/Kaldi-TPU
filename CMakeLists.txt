@@ -123,12 +123,15 @@ include(onnxruntime)
 set(ONNXRUNTIME_DIR ${onnxruntime_SOURCE_DIR})
 message(STATUS "ONNXRUNTIME_DIR: ${ONNXRUNTIME_DIR}")
 
-if(NOT DEFINED TPU_SDK_PATH)
-  message(FATAL_ERROR "Please set TPU_SDK_PATH to point to the TPU_SDK installation")
-endif()
-include_directories(${TPU_SDK_PATH}/include)
-link_directories(${TPU_SDK_PATH}/lib)
-message(STATUS "Using TPU_SDK: ${TPU_SDK_PATH}")
+set(LIBSOPHON /opt/sophon/libsophon-current)
+include_directories(${LIBSOPHON}/include)
+
+link_directories(${LIBSOPHON}/lib)
+
+set(UNTPU /data/untool/install)
+include_directories(${UNTPU}/include)
+link_directories(${UNTPU}/lib)
+message(STATUS "Using UNTPU: ${UNTPU}")
 
 if(SHERPA_ONNX_ENABLE_TESTS)
   enable_testing()

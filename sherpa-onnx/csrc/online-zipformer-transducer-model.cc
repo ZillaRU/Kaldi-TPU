@@ -20,9 +20,17 @@
 #include "sherpa-onnx/csrc/session.h"
 #include "sherpa-onnx/csrc/text-utils.h"
 #include "sherpa-onnx/csrc/unbind.h"
-#include "cviruntime.h"
-#include "cvi-utils.h"
-#include "onnx-to-cvi.h"
+
+// include untool
+#include "runtime/unruntime.h"
+#include "utils/device.h"
+#include "utils/logs.h"
+#include "unt-utils.h"
+
+#include "onnx-to-unt.h"
+
+using namespace unrun;
+using namespace un_tensor;
 
 namespace sherpa_onnx {
 
@@ -46,8 +54,12 @@ OnlineZipformerTransducerModel::OnlineZipformerTransducerModel(
 }
 
 void OnlineZipformerTransducerModel::InitEncoder(const std::string &model_path) {
-    CVI_NN_RegisterModel(model_path.c_str(), &encoder_sess_);
-    GetInputOutPutInfo(encoder_sess_);
+    encoder_sess_ = load_bmodel(model_path.c_str(), true, false, 0);
+    encoder_sess_->model_info.default_map = true;
+    encoder_sess_->model_info.default_input_map  = true;
+    encoder_sess_->model_info.default_output_map = true;
+    init_io_tensor(encoder_sess_, 0);
+    check_move_to_device_fill_api( encoder_sess_, true );
 
     // set meta data
     encoder_dims_ = {384, 384, 384, 384, 384};
@@ -60,8 +72,12 @@ void OnlineZipformerTransducerModel::InitEncoder(const std::string &model_path) 
 }
 
 void OnlineZipformerTransducerModel::InitDecoder(const std::string &model_path) {
-    CVI_NN_RegisterModel(model_path.c_str(), &decoder_sess_);
-    GetInputOutPutInfo(decoder_sess_);
+    decoder_sess_ = load_bmodel(model_path.c_str(), true, false, 0);
+    decoder_sess_->model_info.default_map = true;
+    decoder_sess_->model_info.default_input_map  = true;
+    decoder_sess_->model_info.default_output_map = true;
+    init_io_tensor(decoder_sess_, 0);
+    check_move_to_device_fill_api( decoder_sess_, true );
 
     // set meta data
     vocab_size_ = 6254;
@@ -69,10 +85,26 @@ void OnlineZipformerTransducerModel::InitDecoder(const std::string &model_path) 
 }
 
 void OnlineZipformerTransducerModel::InitJoiner(const std::string &model_path) {
-    CVI_NN_RegisterModel(model_path.c_str(), &joiner_sess_);
-    GetInputOutPutInfo(joiner_sess_);
+    joiner_sess_ = load_bmodel(model_path.c_str(), true, false, 0);
+    joiner_sess_->model_info.default_map = true;
+    joiner_sess_->model_info.default_input_map  = true;
+    joiner_sess_->model_info.default_output_map = true;
+    init_io_tensor(joiner_sess_, 0);
+    check_move_to_device_fill_api( joiner_sess_, true );
+    
     // set meta data
     // joiner_dim = 512
+}
+
+void OnlineZipformerTransducerModel::ReleaseModels() {
+  free_runtime(encoder_sess_);
+  free_runtime(decoder_sess_);
+  free_runtime(joiner_sess_);
+  minilog::INFO << "release CVI models" << minilog::INFOendl;
+}
+
+OnlineZipformerTransducerModel::~OnlineZipformerTransducerModel() {
+  ReleaseModels();
 }
 
 std::vector<Ort::Value> OnlineZipformerTransducerModel::StackStates(
@@ -346,46 +378,66 @@ OnlineZipformerTransducerModel::RunEncoder(Ort::Value features,
   }
 
   // get input / output tensors
-  CVI_TENSOR *input_tensors, *output_tensors;
-  int32_t input_num, output_num;
-  CVI_NN_GetInputOutputTensors(encoder_sess_, &input_tensors, &input_num, &output_tensors, &output_num);
-  printf("[encoder] input num: %d, output num: %d\n", input_num, output_num);
+  int input_num = encoder_sess_->input_tensors.size();
+  int output_num = encoder_sess_->output_tensors.size();
+  minilog::INFO << "[encoder] input num:" << input_num << "output num: " << output_num << minilog::INFOendl;
 
-  LoadOrtValuesToCviTensors(encoder_inputs, input_tensors, input_num);
+  LoadOrtValuesToUnTensors(encoder_inputs, encoder_sess_->input_tensors, input_num);
 
-  CVI_NN_Forward(encoder_sess_, input_tensors, input_num, output_tensors, output_num);
+  // host to device
+  malloc_generate_host_data( encoder_sess_ );
+  copy_input_to_device( encoder_sess_, false );
+  // run
+  COMMAND_RUNTIME({run( encoder_sess_ );});
+  copy_output_to_host( encoder_sess_, false );
+  // // show output
+  print_output_value(encoder_sess_, 0, output_num);
 
-  std::vector<Ort::Value> next_states = GetOrtValuesFromCviTensors(output_tensors+1, output_num-1);
+  std::vector<Ort::Value> next_states = GetOrtValuesFromUnTensors((encoder_sess_->output_tensors).begin()+1, output_num-1);
 
-  return {std::move(GetOrtValueFromCviTensor(output_tensors[0])), std::move(next_states)};
+  return {std::move(GetOrtValueFromUnTensor(encoder_sess_->output_tensors[0])), std::move(next_states)};
 }
 
 Ort::Value OnlineZipformerTransducerModel::RunDecoder(Ort::Value decoder_input) {
   // get input / output tensors
-  CVI_TENSOR *input_tensors, *output_tensors;
-  int32_t input_num, output_num;
-  CVI_NN_GetInputOutputTensors(decoder_sess_, &input_tensors, &input_num, &output_tensors, &output_num);
-  printf("[Decoder] input num: %d, output num: %d\n", input_num, output_num);
-  std::vector<Ort::Value> temp = {};
-  temp.push_back(std::move(decoder_input));
-  LoadOrtValuesToCviTensors(temp, input_tensors, input_num);
-  CVI_NN_Forward(decoder_sess_, input_tensors, input_num, output_tensors, output_num);
-  return std::move(GetOrtValueFromCviTensor(output_tensors[0]));
+  int input_num = decoder_sess_->input_tensors.size();
+  int output_num = decoder_sess_->output_tensors.size();
+  minilog::INFO << "[decoder] input num:" << input_num << "output num: " << output_num << minilog::INFOendl;
+
+  ConvertOrtValueToUnTensor(decoder_input, encoder_sess_->input_tensors[0]);
+
+  // host to device
+  malloc_generate_host_data( decoder_sess_ );
+  copy_input_to_device( decoder_sess_, false );
+  // run
+  COMMAND_RUNTIME({run( decoder_sess_ );});
+  copy_output_to_host( decoder_sess_, false );
+  // // show output
+  print_output_value(decoder_sess_, 0, output_num);
+  return std::move(GetOrtValueFromUnTensor(decoder_sess_->output_tensors[0]));
 }
 
 Ort::Value OnlineZipformerTransducerModel::RunJoiner(Ort::Value encoder_out,
                                                      Ort::Value decoder_out) {
   // get input / output tensors
-  CVI_TENSOR *input_tensors, *output_tensors;
-  int32_t input_num, output_num;
-  CVI_NN_GetInputOutputTensors(joiner_sess_, &input_tensors, &input_num, &output_tensors, &output_num);
-  printf("[Decoder] input num: %d, output num: %d\n", input_num, output_num);
+  int input_num = joiner_sess_->input_tensors.size();
+  int output_num = joiner_sess_->output_tensors.size();
+  
+  minilog::INFO << "[Joiner] input num:" << input_num << " output num: " << output_num << minilog::INFOendl;
   std::vector<Ort::Value> temp = {};
   temp.push_back(std::move(encoder_out));
   temp.push_back(std::move(decoder_out));
-  LoadOrtValuesToCviTensors(temp, input_tensors, input_num);
-  CVI_NN_Forward(joiner_sess_, input_tensors, input_num, output_tensors, output_num);
-  return std::move(GetOrtValueFromCviTensor(output_tensors[0]));
+  LoadOrtValuesToUnTensors(temp, joiner_sess_->input_tensors, input_num);
+
+  // host to device
+  malloc_generate_host_data( joiner_sess_ );
+  copy_input_to_device( joiner_sess_, false );
+  // run
+  COMMAND_RUNTIME({run( joiner_sess_ );});
+  copy_output_to_host( joiner_sess_, false );
+  // // show output
+  print_output_value(joiner_sess_, 0, output_num);
+  return std::move(GetOrtValueFromUnTensor(decoder_sess_->output_tensors[0]));
 }
 
 }  // namespace sherpa_onnx

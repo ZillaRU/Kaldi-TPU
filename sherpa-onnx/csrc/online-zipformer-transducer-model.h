@@ -9,9 +9,12 @@
 #include <utility>
 #include <vector>
 
-#include "cviruntime.h"
+#include "runtime/unruntime.h"
 #include "sherpa-onnx/csrc/online-model-config.h"
 #include "sherpa-onnx/csrc/online-transducer-model.h"
+
+using namespace unrun;
+using namespace un_tensor;
 
 namespace sherpa_onnx {
 
@@ -19,6 +22,8 @@ class OnlineZipformerTransducerModel : public OnlineTransducerModel {
  public:
   explicit OnlineZipformerTransducerModel(const OnlineModelConfig &config);
 
+  virtual ~OnlineZipformerTransducerModel();
+  
   std::vector<Ort::Value> StackStates(
       const std::vector<std::vector<Ort::Value>> &states) const override;
 
@@ -48,15 +53,16 @@ class OnlineZipformerTransducerModel : public OnlineTransducerModel {
   void InitEncoder(const std::string &model_path);
   void InitDecoder(const std::string &model_path);
   void InitJoiner(const std::string &model_path);
+  void ReleaseModels();
 
  private:
   Ort::Env env_;
   Ort::SessionOptions sess_opts_;
   Ort::AllocatorWithDefaultOptions allocator_;
 
-  CVI_MODEL_HANDLE encoder_sess_ = nullptr;
-  CVI_MODEL_HANDLE decoder_sess_ = nullptr;
-  CVI_MODEL_HANDLE joiner_sess_ = nullptr;
+  un_runtime_s* encoder_sess_ = nullptr;
+  un_runtime_s* decoder_sess_ = nullptr;
+  un_runtime_s* joiner_sess_ = nullptr;
 
   std::vector<std::string> encoder_input_names_;
   std::vector<const char *> encoder_input_names_ptr_;

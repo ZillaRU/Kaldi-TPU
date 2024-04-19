@@ -14,7 +14,7 @@ struct OnlineModelConfig {
   OnlineTransducerModelConfig transducer;
   std::string tokens;
   int32_t num_threads = 1;
-  bool debug = false;
+  bool is_debug = false;
   std::string provider = "cpu";
 
   // Valid values:
@@ -25,12 +25,12 @@ struct OnlineModelConfig {
 
   OnlineModelConfig() = default;
   OnlineModelConfig(const OnlineTransducerModelConfig &transducer,
-                    const std::string &tokens, int32_t num_threads, bool debug,
+                    const std::string &tokens, int32_t num_threads, bool is_debug,
                     const std::string &provider, const std::string &model_type)
       : transducer(transducer),
         tokens(tokens),
         num_threads(num_threads),
-        debug(debug),
+        is_debug(is_debug),
         provider(provider),
         model_type(model_type) {}
 
