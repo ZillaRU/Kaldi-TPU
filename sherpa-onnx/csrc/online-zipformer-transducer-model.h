@@ -9,7 +9,8 @@
 #include <utility>
 #include <vector>
 
-#include "runtime/unruntime.h"
+#include "onnx-to-unt.h"
+
 #include "sherpa-onnx/csrc/online-model-config.h"
 #include "sherpa-onnx/csrc/online-transducer-model.h"
 

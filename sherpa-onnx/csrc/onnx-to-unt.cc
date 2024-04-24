@@ -1,9 +1,24 @@
 #include "sherpa-onnx/csrc/onnx-to-unt.h"
 
-#include "unt-utils.h"
+#undef LOG
+
+
 using namespace un_tensor;
 using namespace unrun;
 
+void print_output_value(un_runtime_s* runtime, int start, int length){
+    int output_num = runtime->output_tensors.size();
+    for (int i = 0; i < output_num; i++) {
+        print_data_by_fp32(runtime->output_tensors[i].data, runtime->output_tensors[i].size, runtime->output_tensors[i].dtype, start, length);
+    }
+}
+
+void malloc_generate_host_data(un_runtime_s* runtime){
+    int input_num = runtime->input_tensors.size();
+    for (int i = 0; i < input_num; i++) {
+        malloc_host_data(&runtime->input_tensors[i]);
+    }
+}
 
 Ort::Value GetOrtValueFromUnTensor(untensor_s &un_tensor) {
   // 根据CVI_TENSOR的数据类型确定Ort的数据类型
@@ -63,8 +78,8 @@ void ConvertOrtValueToUnTensor(Ort::Value &ort_value, untensor_s &untensor) {
     if (dtype_size_map.at(untensor.dtype) == ortvalue_size_map.at(type)) {
       memcpy(untensor.data, ort_value.GetTensorMutableRawData(), untensor.size);
     } else {
-      minilog::ERROR << "ort_value element size: " << ortvalue_size_map.at(type)
-            << "un_tensor element size: " << untensor.size << minilog::ERRORendl;
+      minilog::T_warning << "ort_value element size: " << ortvalue_size_map.at(type)
+            << "un_tensor element size: " << untensor.size << minilog::warningendl;
       throw std::runtime_error("Unsupported data type for conversion.");
     }
   }

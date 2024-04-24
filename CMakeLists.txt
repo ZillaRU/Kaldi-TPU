@@ -124,14 +124,11 @@ set(ONNXRUNTIME_DIR ${onnxruntime_SOURCE_DIR})
 message(STATUS "ONNXRUNTIME_DIR: ${ONNXRUNTIME_DIR}")
 
 set(LIBSOPHON /opt/sophon/libsophon-current)
-include_directories(${LIBSOPHON}/include)
 
-link_directories(${LIBSOPHON}/lib)
-
-set(UNTPU /data/untool/install)
-include_directories(${UNTPU}/include)
-link_directories(${UNTPU}/lib)
-message(STATUS "Using UNTPU: ${UNTPU}")
+#set(UNTPU /data/untool/install)
+#include_directories(${UNTPU}/include)
+#link_directories(${UNTPU}/lib)
+#message(STATUS "Using UNTPU: ${UNTPU}")
 
 if(SHERPA_ONNX_ENABLE_TESTS)
   enable_testing()

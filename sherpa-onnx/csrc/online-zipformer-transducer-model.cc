@@ -21,14 +21,6 @@
 #include "sherpa-onnx/csrc/text-utils.h"
 #include "sherpa-onnx/csrc/unbind.h"
 
-// include untool
-#include "runtime/unruntime.h"
-#include "utils/device.h"
-#include "utils/logs.h"
-#include "unt-utils.h"
-
-#include "onnx-to-unt.h"
-
 using namespace unrun;
 using namespace un_tensor;
 
@@ -100,7 +92,7 @@ void OnlineZipformerTransducerModel::ReleaseModels() {
   free_runtime(encoder_sess_);
   free_runtime(decoder_sess_);
   free_runtime(joiner_sess_);
-  minilog::INFO << "release CVI models" << minilog::INFOendl;
+  minilog::T_info << "release CVI models" << minilog::infoendl;
 }
 
 OnlineZipformerTransducerModel::~OnlineZipformerTransducerModel() {
@@ -380,7 +372,7 @@ OnlineZipformerTransducerModel::RunEncoder(Ort::Value features,
   // get input / output tensors
   int input_num = encoder_sess_->input_tensors.size();
   int output_num = encoder_sess_->output_tensors.size();
-  minilog::INFO << "[encoder] input num:" << input_num << "output num: " << output_num << minilog::INFOendl;
+  minilog::T_info << "[encoder] input num:" << input_num << "output num: " << output_num << minilog::infoendl;
 
   LoadOrtValuesToUnTensors(encoder_inputs, encoder_sess_->input_tensors, input_num);
 
@@ -402,7 +394,7 @@ Ort::Value OnlineZipformerTransducerModel::RunDecoder(Ort::Value decoder_input) 
   // get input / output tensors
   int input_num = decoder_sess_->input_tensors.size();
   int output_num = decoder_sess_->output_tensors.size();
-  minilog::INFO << "[decoder] input num:" << input_num << "output num: " << output_num << minilog::INFOendl;
+  minilog::T_info << "[decoder] input num:" << input_num << "output num: " << output_num << minilog::infoendl;
 
   ConvertOrtValueToUnTensor(decoder_input, encoder_sess_->input_tensors[0]);
 
@@ -423,7 +415,7 @@ Ort::Value OnlineZipformerTransducerModel::RunJoiner(Ort::Value encoder_out,
   int input_num = joiner_sess_->input_tensors.size();
   int output_num = joiner_sess_->output_tensors.size();
   
-  minilog::INFO << "[Joiner] input num:" << input_num << " output num: " << output_num << minilog::INFOendl;
+  minilog::T_info << "[Joiner] input num:" << input_num << " output num: " << output_num << minilog::infoendl;
   std::vector<Ort::Value> temp = {};
   temp.push_back(std::move(encoder_out));
   temp.push_back(std::move(decoder_out));
