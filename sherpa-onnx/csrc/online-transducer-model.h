@@ -10,8 +10,7 @@
 #include <vector>
 
 #include "onnxruntime_cxx_api.h"  // NOLINT
-#undef LOG
-#include "onnx-to-unt.h"
+
 #include "sherpa-onnx/csrc/hypothesis.h"
 #include "sherpa-onnx/csrc/online-model-config.h"
 #include "sherpa-onnx/csrc/online-transducer-decoder.h"
@@ -28,10 +27,7 @@ class OnlineTransducerModel {
   static std::unique_ptr<OnlineTransducerModel> Create(
       const OnlineModelConfig &config);
 
-#if __ANDROID_API__ >= 9
-  static std::unique_ptr<OnlineTransducerModel> Create(
-      AAssetManager *mgr, const OnlineModelConfig &config);
-#endif
+
 
   /** Stack a list of individual states into a batch.
    *
@@ -144,85 +140,6 @@ class OnlineTransducerModel {
   Ort::Value BuildDecoderInput(const std::vector<Hypothesis> &hyps);
 };
 
-
-class OnlineZipformerTransducerModel : public OnlineTransducerModel {
- public:
-  explicit OnlineZipformerTransducerModel(const OnlineModelConfig &config);
-
-  virtual ~OnlineZipformerTransducerModel();
-  
-  std::vector<Ort::Value> StackStates(
-      const std::vector<std::vector<Ort::Value>> &states) const override;
-
-  std::vector<std::vector<Ort::Value>> UnStackStates(
-      const std::vector<Ort::Value> &states) const override;
-
-  std::vector<Ort::Value> GetEncoderInitStates() override;
-
-  std::pair<Ort::Value, std::vector<Ort::Value>> RunEncoder(
-      Ort::Value features, std::vector<Ort::Value> states,
-      Ort::Value processed_frames) override;
-
-  Ort::Value RunDecoder(Ort::Value decoder_input) override;
-
-  Ort::Value RunJoiner(Ort::Value encoder_out, Ort::Value decoder_out) override;
-
-  int32_t ContextSize() const override { return context_size_; }
-
-  int32_t ChunkSize() const override { return T_; }
-
-  int32_t ChunkShift() const override { return decode_chunk_len_; }
-
-  int32_t VocabSize() const override { return vocab_size_; }
-  OrtAllocator *Allocator() override { return allocator_; }
-
- private:
-  void InitEncoder(const std::string &model_path);
-  void InitDecoder(const std::string &model_path);
-  void InitJoiner(const std::string &model_path);
-  void ReleaseModels();
-
- private:
-  Ort::Env env_;
-  Ort::SessionOptions sess_opts_;
-  Ort::AllocatorWithDefaultOptions allocator_;
-
-  un_runtime_s* encoder_sess_ = nullptr;
-  un_runtime_s* decoder_sess_ = nullptr;
-  un_runtime_s* joiner_sess_ = nullptr;
-
-  std::vector<std::string> encoder_input_names_;
-  std::vector<const char *> encoder_input_names_ptr_;
-
-  std::vector<std::string> encoder_output_names_;
-  std::vector<const char *> encoder_output_names_ptr_;
-
-  std::vector<std::string> decoder_input_names_;
-  std::vector<const char *> decoder_input_names_ptr_;
-
-  std::vector<std::string> decoder_output_names_;
-  std::vector<const char *> decoder_output_names_ptr_;
-
-  std::vector<std::string> joiner_input_names_;
-  std::vector<const char *> joiner_input_names_ptr_;
-
-  std::vector<std::string> joiner_output_names_;
-  std::vector<const char *> joiner_output_names_ptr_;
-
-  OnlineModelConfig config_;
-
-  std::vector<int32_t> encoder_dims_;
-  std::vector<int32_t> attention_dims_;
-  std::vector<int32_t> num_encoder_layers_;
-  std::vector<int32_t> cnn_module_kernels_;
-  std::vector<int32_t> left_context_len_;
-
-  int32_t T_ = 0;
-  int32_t decode_chunk_len_ = 0;
-
-  int32_t context_size_ = 0;
-  int32_t vocab_size_ = 0;
-};
 
 }  // namespace sherpa_onnx
 

@@ -5,7 +5,6 @@
 #include "sherpa-onnx/csrc/online-zipformer-transducer-model.h"
 
 #include <assert.h>
-
 #include <algorithm>
 #include <memory>
 #include <sstream>
@@ -21,10 +20,58 @@
 #include "sherpa-onnx/csrc/text-utils.h"
 #include "sherpa-onnx/csrc/unbind.h"
 
-using namespace unrun;
-using namespace un_tensor;
+
+using namespace bmruntime;
 
 namespace sherpa_onnx {
+
+static std::string shape_to_str(const bm_shape_t& shape) {
+    std::string str ="[ ";
+    for(int i=0; i<shape.num_dims; i++){
+      str += std::to_string(shape.dims[i]) + " ";
+    }
+    str += "]";
+    return str;
+}
+
+void showInfo(const bm_net_info_t* m_netinfo)
+{
+    const char* dtypeMap[] = {
+    "FLOAT32",
+    "FLOAT16",
+    "INT8",
+    "UINT8",
+    "INT16",
+    "UINT16",
+    "INT32",
+    "UINT32",
+    };
+    printf("\n########################\n");
+    printf("NetName: %s\n", m_netinfo->name);
+    for(int s=0; s<m_netinfo->stage_num; s++){
+        printf("---- stage %d ----\n", s);
+        for(int i=0; i<m_netinfo->input_num; i++){
+            auto shapeStr = shape_to_str(m_netinfo->stages[s].input_shapes[i]);
+            printf("  Input %d) '%s' shape=%s dtype=%s scale=%g\n",
+                i,
+                m_netinfo->input_names[i],
+                shapeStr.c_str(),
+                dtypeMap[m_netinfo->input_dtypes[i]],
+                m_netinfo->input_scales[i]);
+        }
+        for(int i=0; i<m_netinfo->output_num; i++){
+            auto shapeStr = shape_to_str(m_netinfo->stages[s].output_shapes[i]);
+            printf("  Output %d) '%s' shape=%s dtype=%s scale=%g\n",
+                i,
+                m_netinfo->output_names[i],
+                shapeStr.c_str(),
+                dtypeMap[m_netinfo->output_dtypes[i]],
+                m_netinfo->output_scales[i]);
+        }
+    }
+    printf("########################\n\n");
+
+}
 
 OnlineZipformerTransducerModel::OnlineZipformerTransducerModel(
     const OnlineModelConfig &config)
@@ -34,24 +81,30 @@ OnlineZipformerTransducerModel::OnlineZipformerTransducerModel(
       allocator_{} {
   {
     InitEncoder(config.transducer.encoder);
+    // showInfo(encoder_net->info());
   }
 
   {
     InitDecoder(config.transducer.decoder);
+    // showInfo(decoder_net->info());
   }
 
   {
     InitJoiner(config.transducer.joiner);
+    // showInfo(joiner_net->info());
   }
 }
 
 void OnlineZipformerTransducerModel::InitEncoder(const std::string &model_path) {
-    encoder_sess_ = load_bmodel(model_path.c_str(), true, false, 0);
-    encoder_sess_->model_info.default_map = true;
-    encoder_sess_->model_info.default_input_map  = true;
-    encoder_sess_->model_info.default_output_map = true;
-    init_io_tensor(encoder_sess_, 0);
-    check_move_to_device_fill_api( encoder_sess_, true );
+    std::shared_ptr<Context> encoder_ctx = std::make_shared<Context>(dev_id);
+    bm_status_t status = encoder_ctx->load_bmodel(model_path.c_str());
+    assert(BM_SUCCESS == status);
+
+    // create Network
+    std::vector<const char *> network_names;
+    encoder_ctx->get_network_names(&network_names);
+    encoder_net = std::make_shared<Network>(*encoder_ctx, network_names[0], 0); // use stage[0]
+    assert(encoder_net->info()->input_num == enc_in_num && encoder_net->info()->output_num == enc_out_num);
 
     // set meta data
     encoder_dims_ = {384, 384, 384, 384, 384};
@@ -64,12 +117,15 @@ void OnlineZipformerTransducerModel::InitEncoder(const std::string &model_path) 
 }
 
 void OnlineZipformerTransducerModel::InitDecoder(const std::string &model_path) {
-    decoder_sess_ = load_bmodel(model_path.c_str(), true, false, 0);
-    decoder_sess_->model_info.default_map = true;
-    decoder_sess_->model_info.default_input_map  = true;
-    decoder_sess_->model_info.default_output_map = true;
-    init_io_tensor(decoder_sess_, 0);
-    check_move_to_device_fill_api( decoder_sess_, true );
+    std::shared_ptr<Context> decoder_ctx = std::make_shared<Context>(dev_id);
+    bm_status_t status = decoder_ctx->load_bmodel(model_path.c_str());
+    assert(BM_SUCCESS == status);
+
+    // create Network
+    std::vector<const char *> network_names;
+    decoder_ctx->get_network_names(&network_names);
+    decoder_net = std::make_shared<Network>(*decoder_ctx, network_names[0], 0); // use stage[0]
+    assert(decoder_net->info()->input_num == dec_in_num && decoder_net->info()->output_num == dec_out_num);
 
     // set meta data
     vocab_size_ = 6254;
@@ -77,22 +133,24 @@ void OnlineZipformerTransducerModel::InitDecoder(const std::string &model_path) 
 }
 
 void OnlineZipformerTransducerModel::InitJoiner(const std::string &model_path) {
-    joiner_sess_ = load_bmodel(model_path.c_str(), true, false, 0);
-    joiner_sess_->model_info.default_map = true;
-    joiner_sess_->model_info.default_input_map  = true;
-    joiner_sess_->model_info.default_output_map = true;
-    init_io_tensor(joiner_sess_, 0);
-    check_move_to_device_fill_api( joiner_sess_, true );
-    
+    std::shared_ptr<Context> joiner_ctx = std::make_shared<Context>(dev_id);
+    bm_status_t status = joiner_ctx->load_bmodel(model_path.c_str());
+    assert(BM_SUCCESS == status);
+
+    // create Network
+    std::vector<const char *> network_names;
+    joiner_ctx->get_network_names(&network_names);
+    joiner_net = std::make_shared<Network>(*joiner_ctx, network_names[0], 0); // use stage[0]
+    assert(joiner_net->info()->input_num == jo_in_num && joiner_net->info()->output_num == jo_out_num);
+
     // set meta data
     // joiner_dim = 512
 }
 
 void OnlineZipformerTransducerModel::ReleaseModels() {
-  free_runtime(encoder_sess_);
-  free_runtime(decoder_sess_);
-  free_runtime(joiner_sess_);
-  minilog::T_info << "release CVI models" << minilog::infoendl;
+  // free_runtime(encoder_);
+  // free_runtime(decoder_sess_);
+  // free_runtime(joiner_sess_);
 }
 
 OnlineZipformerTransducerModel::~OnlineZipformerTransducerModel() {
@@ -361,75 +419,46 @@ std::pair<Ort::Value, std::vector<Ort::Value>>
 OnlineZipformerTransducerModel::RunEncoder(Ort::Value features,
                                            std::vector<Ort::Value> states,
                                            Ort::Value /* processed_frames */) {
+  
+  auto &bm_encoder_inputs = encoder_net->Inputs();
+  auto &bm_encoder_outputs = encoder_net->Outputs();
+
   std::vector<Ort::Value> encoder_inputs;
   encoder_inputs.reserve(1 + states.size());
+  
+  ConvertOrtValueToBMTensor(features, bm_encoder_inputs[0]); //debug
 
   encoder_inputs.push_back(std::move(features));
   for (auto &v : states) {
     encoder_inputs.push_back(std::move(v));
   }
 
-  // get input / output tensors
-  int input_num = encoder_sess_->input_tensors.size();
-  int output_num = encoder_sess_->output_tensors.size();
-  minilog::T_info << "[encoder] input num:" << input_num << "output num: " << output_num << minilog::infoendl;
+  LoadOrtValuesToBMTensors(encoder_inputs, bm_encoder_inputs, enc_in_num);
+  
+  bool status = encoder_net->Forward();
+  assert(BM_SUCCESS == status);
 
-  LoadOrtValuesToUnTensors(encoder_inputs, encoder_sess_->input_tensors, input_num);
+  std::vector<Ort::Value> next_states = GetOrtValuesFromBMTensors(bm_encoder_outputs.begin()+1, enc_out_num-1);
 
-  // host to device
-  malloc_generate_host_data( encoder_sess_ );
-  copy_input_to_device( encoder_sess_, false );
-  // run
-  COMMAND_RUNTIME({run( encoder_sess_ );});
-  copy_output_to_host( encoder_sess_, false );
-  // // show output
-  print_output_value(encoder_sess_, 0, output_num);
-
-  std::vector<Ort::Value> next_states = GetOrtValuesFromUnTensors((encoder_sess_->output_tensors).begin()+1, output_num-1);
-
-  return {std::move(GetOrtValueFromUnTensor(encoder_sess_->output_tensors[0])), std::move(next_states)};
+  return {std::move(GetOrtValueFromBMTensor(bm_encoder_outputs[0])), std::move(next_states)};
 }
 
 Ort::Value OnlineZipformerTransducerModel::RunDecoder(Ort::Value decoder_input) {
-  // get input / output tensors
-  int input_num = decoder_sess_->input_tensors.size();
-  int output_num = decoder_sess_->output_tensors.size();
-  minilog::T_info << "[decoder] input num:" << input_num << "output num: " << output_num << minilog::infoendl;
-
-  ConvertOrtValueToUnTensor(decoder_input, encoder_sess_->input_tensors[0]);
-
-  // host to device
-  malloc_generate_host_data( decoder_sess_ );
-  copy_input_to_device( decoder_sess_, false );
-  // run
-  COMMAND_RUNTIME({run( decoder_sess_ );});
-  copy_output_to_host( decoder_sess_, false );
-  // // show output
-  print_output_value(decoder_sess_, 0, output_num);
-  return std::move(GetOrtValueFromUnTensor(decoder_sess_->output_tensors[0]));
+  ConvertOrtValueToBMTensor(decoder_input, decoder_net->Inputs()[0]);
+  bool status = decoder_net->Forward();
+  assert(BM_SUCCESS == status);
+  return std::move(GetOrtValueFromBMTensor(decoder_net->Outputs()[0]));
 }
 
 Ort::Value OnlineZipformerTransducerModel::RunJoiner(Ort::Value encoder_out,
                                                      Ort::Value decoder_out) {
-  // get input / output tensors
-  int input_num = joiner_sess_->input_tensors.size();
-  int output_num = joiner_sess_->output_tensors.size();
-  
-  minilog::T_info << "[Joiner] input num:" << input_num << " output num: " << output_num << minilog::infoendl;
   std::vector<Ort::Value> temp = {};
   temp.push_back(std::move(encoder_out));
   temp.push_back(std::move(decoder_out));
-  LoadOrtValuesToUnTensors(temp, joiner_sess_->input_tensors, input_num);
-
-  // host to device
-  malloc_generate_host_data( joiner_sess_ );
-  copy_input_to_device( joiner_sess_, false );
-  // run
-  COMMAND_RUNTIME({run( joiner_sess_ );});
-  copy_output_to_host( joiner_sess_, false );
-  // // show output
-  print_output_value(joiner_sess_, 0, output_num);
-  return std::move(GetOrtValueFromUnTensor(decoder_sess_->output_tensors[0]));
+  LoadOrtValuesToBMTensors(temp, joiner_net->Inputs(), jo_in_num);
+  bool status = joiner_net->Forward();
+  assert(BM_SUCCESS == status);
+  return std::move(GetOrtValueFromBMTensor(joiner_net->Outputs()[0]));
 }
 
 }  // namespace sherpa_onnx

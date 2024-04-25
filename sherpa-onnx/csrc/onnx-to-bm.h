@@ -1,11 +1,9 @@
 #ifndef ONNX_TO_UNT_H
 #define ONNX_TO_UNT_H
 
+#include <algorithm> 
 #include "onnxruntime_cxx_api.h" // NOLINT
-#include "runtime/unruntime.h"
-
-using namespace un_tensor;
-using namespace unrun;
+#include "bmruntime_cpp.h"
 
 static const std::unordered_map<int, int> dtype_size_map = {
     {0, 4}, // fp32
@@ -16,7 +14,7 @@ static const std::unordered_map<int, int> dtype_size_map = {
     {3, 2} // u16
 };
 
-static const std::unordered_map<ONNXTensorElementDataType, int> ortvalue_size_map = {
+static const std::unordered_map<ONNXTensorElementDataType, size_t> ortvalue_size_map = {
     {ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT, 4},
     {ONNX_TENSOR_ELEMENT_DATA_TYPE_INT32, 4},
     {ONNX_TENSOR_ELEMENT_DATA_TYPE_UINT32, 4},
@@ -30,22 +28,26 @@ static const std::unordered_map<ONNXTensorElementDataType, int> ortvalue_size_ma
     {ONNX_TENSOR_ELEMENT_DATA_TYPE_INT64, 8},
 };
 
-static const char *formatToStr(int untensor_dtype) {
-  switch (untensor_dtype) {
+static const char *formatToStr(int bmrtensor_dtype) {
+  switch (bmrtensor_dtype) {
     case 0:
       return "fp32";
     case 1:
-      return "i32";
-    case 4:
-      return "u32";
-    case 6:
-      return "bf16";
+      return "fp16";
     case 2:
-      return "i16";
+      return "i8";
     case 3:
+      return "u8";
+    case 4:
+      return "i16";
+    case 5:
       return "u16";
+    case 6:
+      return "i32";
+    case 7:
+      return "u32";
     default:;
-      minilog::T_error << "unknown fmt:" << untensor_dtype << minilog::errorendl;
+      throw std::runtime_error("Unsupported data type.");
   }
   return nullptr;
 }
@@ -91,16 +93,12 @@ static void copyI32ToI8(int *src, int8_t *dst, int count) {
   memcpy(dst, reinterpret_cast<int8_t *>(src), count * sizeof(int8_t));
 }
 
-void print_output_value(un_runtime_s *runtime, int start, int length);
+Ort::Value GetOrtValueFromBMTensor(bmruntime::Tensor* const bmr_tensor);
 
-void malloc_generate_host_data(un_runtime_s *runtime);
+void ConvertOrtValueToBMTensor(Ort::Value& ort_value, bmruntime::Tensor* const bmr_tensor);
 
-Ort::Value GetOrtValueFromUnTensor(untensor_s& un_tensor);
+void LoadOrtValuesToBMTensors(std::vector<Ort::Value> &ort_value_list, const std::vector<bmruntime::Tensor *>& tensor_list, const int num);
 
-void ConvertOrtValueToUnTensor(Ort::Value& ort_value, untensor_s& un_tensor);
-
-void LoadOrtValuesToUnTensors(std::vector<Ort::Value> &ort_value_list, std::vector<untensor_s> &untensor_list, const int num);
-
-std::vector<Ort::Value> GetOrtValuesFromUnTensors(std::vector<untensor_s>::iterator untensor_start_p, const int num);
+std::vector<Ort::Value> GetOrtValuesFromBMTensors(std::vector<bmruntime::Tensor *>::const_iterator tensor_start_p, const int num);
 
 #endif

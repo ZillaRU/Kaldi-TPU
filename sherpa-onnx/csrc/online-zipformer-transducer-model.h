@@ -9,13 +9,11 @@
 #include <utility>
 #include <vector>
 
-#include "onnx-to-unt.h"
+#include "onnx-to-bm.h"
 
 #include "sherpa-onnx/csrc/online-model-config.h"
 #include "sherpa-onnx/csrc/online-transducer-model.h"
-
-using namespace unrun;
-using namespace un_tensor;
+#include "bmruntime_cpp.h"
 
 namespace sherpa_onnx {
 
@@ -48,6 +46,7 @@ class OnlineZipformerTransducerModel : public OnlineTransducerModel {
   int32_t ChunkShift() const override { return decode_chunk_len_; }
 
   int32_t VocabSize() const override { return vocab_size_; }
+
   OrtAllocator *Allocator() override { return allocator_; }
 
  private:
@@ -57,13 +56,23 @@ class OnlineZipformerTransducerModel : public OnlineTransducerModel {
   void ReleaseModels();
 
  private:
+  int dev_id = 0;
+
+  std::shared_ptr<bmruntime::Network> encoder_net;
+  int enc_in_num=36;
+  int enc_out_num=36;
+
+  std::shared_ptr<bmruntime::Network> decoder_net;
+  int dec_in_num=1;
+  int dec_out_num=1;
+
+  std::shared_ptr<bmruntime::Network> joiner_net;
+  int jo_in_num=2;
+  int jo_out_num=1;
+
   Ort::Env env_;
   Ort::SessionOptions sess_opts_;
   Ort::AllocatorWithDefaultOptions allocator_;
-
-  un_runtime_s* encoder_sess_ = nullptr;
-  un_runtime_s* decoder_sess_ = nullptr;
-  un_runtime_s* joiner_sess_ = nullptr;
 
   std::vector<std::string> encoder_input_names_;
   std::vector<const char *> encoder_input_names_ptr_;
