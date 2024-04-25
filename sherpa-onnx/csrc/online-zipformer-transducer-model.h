@@ -58,14 +58,17 @@ class OnlineZipformerTransducerModel : public OnlineTransducerModel {
  private:
   int dev_id = 0;
 
+  std::shared_ptr<bmruntime::Context> encoder_ctx;
   std::shared_ptr<bmruntime::Network> encoder_net;
   int enc_in_num=36;
   int enc_out_num=36;
 
+  std::shared_ptr<bmruntime::Context> decoder_ctx;
   std::shared_ptr<bmruntime::Network> decoder_net;
   int dec_in_num=1;
   int dec_out_num=1;
 
+  std::shared_ptr<bmruntime::Context> joiner_ctx;
   std::shared_ptr<bmruntime::Network> joiner_net;
   int jo_in_num=2;
   int jo_out_num=1;

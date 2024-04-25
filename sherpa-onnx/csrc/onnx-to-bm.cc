@@ -20,9 +20,11 @@ Ort::Value GetOrtValueFromBMTensor(Tensor* const bmr_tensor) {
   for (int i = 0; i <  tensor_shape.num_dims; ++i) {
     dim64[i] = static_cast<int64_t>(tensor_shape.dims[i]);
   }
-  auto ort_value = Ort::Value::CreateTensor<float>(memory_info, nullptr, 0, dim64, tensor_shape.num_dims);
-  bm_status_t status = bmr_tensor->CopyTo((void*)(ort_value.GetTensorMutableData<float>()));
+  void* temp_data_p = calloc(bmr_tensor->num_elements(), sizeof(float));
+  bm_status_t status = bmr_tensor->CopyTo(temp_data_p);
   assert(BM_SUCCESS == status);
+  auto ort_value = Ort::Value::CreateTensor<float>(memory_info, (float*)temp_data_p, static_cast<size_t>(bmr_tensor->num_elements()), dim64, tensor_shape.num_dims);
+  std::free(temp_data_p);
   return ort_value;
 }
 

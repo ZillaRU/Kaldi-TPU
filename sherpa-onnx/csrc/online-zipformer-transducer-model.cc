@@ -96,7 +96,7 @@ OnlineZipformerTransducerModel::OnlineZipformerTransducerModel(
 }
 
 void OnlineZipformerTransducerModel::InitEncoder(const std::string &model_path) {
-    std::shared_ptr<Context> encoder_ctx = std::make_shared<Context>(dev_id);
+    encoder_ctx = std::make_shared<Context>(dev_id);
     bm_status_t status = encoder_ctx->load_bmodel(model_path.c_str());
     assert(BM_SUCCESS == status);
 
@@ -117,7 +117,7 @@ void OnlineZipformerTransducerModel::InitEncoder(const std::string &model_path) 
 }
 
 void OnlineZipformerTransducerModel::InitDecoder(const std::string &model_path) {
-    std::shared_ptr<Context> decoder_ctx = std::make_shared<Context>(dev_id);
+    decoder_ctx = std::make_shared<Context>(dev_id);
     bm_status_t status = decoder_ctx->load_bmodel(model_path.c_str());
     assert(BM_SUCCESS == status);
 
@@ -133,7 +133,7 @@ void OnlineZipformerTransducerModel::InitDecoder(const std::string &model_path) 
 }
 
 void OnlineZipformerTransducerModel::InitJoiner(const std::string &model_path) {
-    std::shared_ptr<Context> joiner_ctx = std::make_shared<Context>(dev_id);
+    joiner_ctx = std::make_shared<Context>(dev_id);
     bm_status_t status = joiner_ctx->load_bmodel(model_path.c_str());
     assert(BM_SUCCESS == status);
 
