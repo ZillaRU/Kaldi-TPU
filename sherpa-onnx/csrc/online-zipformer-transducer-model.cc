@@ -425,8 +425,9 @@ OnlineZipformerTransducerModel::RunEncoder(Ort::Value features,
 
   std::vector<Ort::Value> encoder_inputs;
   encoder_inputs.reserve(1 + states.size());
-  
-  ConvertOrtValueToBMTensor(features, bm_encoder_inputs[0]); //debug
+
+  std::cout << "&&& RunEncoder ========================\n features( in 0 )" << std::endl;
+  Print3(&features)
 
   encoder_inputs.push_back(std::move(features));
   for (auto &v : states) {

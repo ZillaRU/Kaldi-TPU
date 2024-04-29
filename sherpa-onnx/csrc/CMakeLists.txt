@@ -28,6 +28,9 @@ set(sources
   online-transducer-model-config.cc
   online-transducer-model.cc
   online-zipformer-transducer-model.cc
+  online-zipformer2-ctc-model-config.cc
+  online-zipformer2-ctc-model.cc
+  online-zipformer2-transducer-model.cc
   onnx-utils.cc
   onnx-to-bm.cc
   pad-sequence.cc
